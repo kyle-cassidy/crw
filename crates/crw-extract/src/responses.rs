@@ -51,15 +51,36 @@ async fn post(
     timeout: Duration,
 ) -> CrwResult<serde_json::Value> {
     let url = responses_url(llm.base_url.as_deref());
-    let resp = shared_client()
-        .post(&url)
-        .timeout(timeout)
-        .bearer_auth(&llm.api_key)
-        .header("content-type", "application/json")
-        .json(body)
-        .send()
-        .await
-        .map_err(|e| CrwError::ExtractionError(format!("Responses API request failed: {e}")))?;
+
+    // Repeat only a request that never reached the provider, on the same terms
+    // as the Chat Completions path: a refused connection carries no risk of a
+    // duplicate generation, a timeout does. Without this a single dropped
+    // socket, which a pooled keep-alive connection makes routine, failed the
+    // whole extraction.
+    const MAX_ATTEMPTS: u32 = 3;
+    let mut attempt: u32 = 0;
+    let resp = loop {
+        attempt += 1;
+        match shared_client()
+            .post(&url)
+            .timeout(timeout)
+            .bearer_auth(&llm.api_key)
+            .header("content-type", "application/json")
+            .json(body)
+            .send()
+            .await
+        {
+            Ok(resp) => break resp,
+            Err(e) if crate::llm::is_undelivered(&e) && attempt < MAX_ATTEMPTS => {
+                tokio::time::sleep(crate::llm::retry_backoff(attempt)).await;
+            }
+            Err(e) => {
+                return Err(CrwError::ExtractionError(format!(
+                    "Responses API request failed: {e}"
+                )));
+            }
+        }
+    };
 
     let status = resp.status();
     let text = resp.text().await.map_err(|e| {

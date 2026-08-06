@@ -76,6 +76,28 @@ pub(crate) fn shared_client() -> &'static reqwest::Client {
     })
 }
 
+/// Was the request never delivered?
+///
+/// A connect failure is the one transport error it is safe to repeat on a POST:
+/// no connection was established, so the provider cannot have seen the body.
+/// A timeout is deliberately excluded — there the request may well have been
+/// processed, and repeating it would double-charge the call.
+///
+/// Worth handling because a dropped keep-alive connection, an idle-timeout on a
+/// load balancer, or a provider closing a pooled socket all surface here, and
+/// failing the whole extraction on the first refused socket is a poor trade for
+/// a call that already tolerates a 30s wait.
+pub(crate) fn is_undelivered(err: &reqwest::Error) -> bool {
+    err.is_connect()
+}
+
+/// Backoff before repeating attempt `attempt` (1-based): ~0.5s, then ~1s, each
+/// with up to ~1s of jitter.
+pub(crate) fn retry_backoff(attempt: u32) -> Duration {
+    let base_ms = 500u64 * (1u64 << (attempt - 1));
+    Duration::from_millis(base_ms + rand::rng().random_range(0..1000))
+}
+
 fn truncate_on_char_boundary(s: &str, max_bytes: usize) -> &str {
     if s.len() <= max_bytes {
         return s;
@@ -467,34 +489,41 @@ async fn call_openai(
         body["reasoning_effort"] = serde_json::json!(effort);
     }
     // Fixed self-limiting retry on transient server throttling (HTTP 429/503)
-    // only. The shared client carries a 30s per-attempt timeout and the
-    // caller's request deadline is not threaded in here, so the budget stays
-    // small and fixed (a few short jittered sleeps). 429/503 are fast server
-    // rejects, so the worst case stays well under the request deadline. All
-    // other non-2xx responses (and transport/timeout errors) keep the original
-    // single-POST contract: hard-error on the first response.
+    // and on a request that was never delivered (see [`is_undelivered`]). The
+    // shared client carries a 30s per-attempt timeout and the caller's request
+    // deadline is not threaded in here, so the budget stays small and fixed (a
+    // few short jittered sleeps). 429/503 are fast server rejects and a refused
+    // connection is faster still, so the worst case stays well under the
+    // request deadline. Every other non-2xx response, and every transport error
+    // that could have reached the provider (a timeout above all), keeps the
+    // original single-POST contract: hard-error on the first response.
     const MAX_ATTEMPTS: u32 = 3;
     let mut attempt: u32 = 0;
     let (status, text) = loop {
         attempt += 1;
-        let resp = client
+        let sent = client
             .post(url)
             .bearer_auth(api_key)
             .header("content-type", "application/json")
             .json(&body)
             .send()
-            .await
-            .map_err(|e| CrwError::Internal(format!("LLM request failed: {e}")))?;
+            .await;
+
+        let resp = match sent {
+            Ok(resp) => resp,
+            Err(e) if is_undelivered(&e) && attempt < MAX_ATTEMPTS => {
+                tokio::time::sleep(retry_backoff(attempt)).await;
+                continue;
+            }
+            Err(e) => return Err(CrwError::Internal(format!("LLM request failed: {e}"))),
+        };
 
         let status = resp.status();
         let is_retryable = status == reqwest::StatusCode::TOO_MANY_REQUESTS
             || status == reqwest::StatusCode::SERVICE_UNAVAILABLE;
         if is_retryable && attempt < MAX_ATTEMPTS {
-            // Exponential backoff with jitter: ~0.5s, ~1s base + up to ~1s
-            // jitter. Drop the response body unread — the status is enough.
-            let base_ms = 500u64 * (1u64 << (attempt - 1));
-            let jitter_ms = rand::rng().random_range(0..1000);
-            tokio::time::sleep(Duration::from_millis(base_ms + jitter_ms)).await;
+            // Drop the response body unread — the status is enough.
+            tokio::time::sleep(retry_backoff(attempt)).await;
             continue;
         }
 
