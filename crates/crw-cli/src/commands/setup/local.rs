@@ -115,7 +115,7 @@ pub async fn run() -> Result<(), SetupError> {
     println!("  and 70+ other sources.");
     println!();
 
-    let searxng_url = if docker_available {
+    let search_backend_url = if docker_available {
         prompt_searxng_setup().await?
     } else {
         ui::print_warning("Skipping search backend (Docker not available)");
@@ -136,7 +136,7 @@ pub async fn run() -> Result<(), SetupError> {
     // shell rc write below is *additional* (env vars still take precedence
     // for CI/Docker users).
     let cfg_path = config_file::write_user_config(build_user_config(
-        searxng_url.as_deref(),
+        search_backend_url.as_deref(),
         llm_result.as_ref(),
     ))?;
     ui::print_success(&format!("Saved {}", cfg_path.display()));
@@ -150,13 +150,13 @@ pub async fn run() -> Result<(), SetupError> {
         save_shell_config(
             shell,
             browser_installed,
-            searxng_url.as_deref(),
+            search_backend_url.as_deref(),
             llm_result.as_ref(),
         )?;
     } else {
         show_manual_config(
             browser_installed,
-            searxng_url.as_deref(),
+            search_backend_url.as_deref(),
             llm_result.as_ref(),
         );
     }
@@ -171,8 +171,8 @@ pub async fn run() -> Result<(), SetupError> {
         SummaryItem::new("Browser Engine", browser_status, browser_ok),
         SummaryItem::new(
             "Search Engine",
-            searxng_url.as_deref().unwrap_or("Not configured"),
-            searxng_url.is_some(),
+            search_backend_url.as_deref().unwrap_or("Not configured"),
+            search_backend_url.is_some(),
         ),
         SummaryItem::new(
             "LLM Provider",
@@ -194,14 +194,14 @@ pub async fn run() -> Result<(), SetupError> {
         quick_start.push("crw example.com --js         # Scrape with JavaScript");
     }
 
-    if searxng_url.is_some() {
+    if search_backend_url.is_some() {
         quick_start.push("crw search \"rust tutorials\"  # Web search");
     }
 
     quick_start.push("crw serve                    # Start API server");
 
     let mut extras = Vec::new();
-    if searxng_url.is_some() {
+    if search_backend_url.is_some() {
         extras.push("Search backend management:");
         extras.push("  docker start searxng         # Start search engine");
         extras.push("  docker stop searxng          # Stop search engine");
@@ -526,11 +526,14 @@ fn prompt_shell_config() -> Result<bool, SetupError> {
 /// Build the `UserConfig` for `~/.config/crw/config.toml`. Only fills in
 /// sections setup actually touched; everything else stays `None` so
 /// `merge_config` preserves prior values across re-runs.
-fn build_user_config(searxng_url: Option<&str>, llm_result: Option<&LlmSetupResult>) -> UserConfig {
+fn build_user_config(
+    search_backend_url: Option<&str>,
+    llm_result: Option<&LlmSetupResult>,
+) -> UserConfig {
     UserConfig {
         client: None,
-        search: searxng_url.map(|url| SearchSection {
-            searxng_url: Some(url.to_string()),
+        search: search_backend_url.map(|url| SearchSection {
+            search_backend_url: Some(url.to_string()),
         }),
         extraction: llm_result.map(|llm| ExtractionSection {
             llm: Some(LlmSection {
@@ -548,7 +551,7 @@ fn build_user_config(searxng_url: Option<&str>, llm_result: Option<&LlmSetupResu
 fn save_shell_config(
     shell: Shell,
     browser_installed: bool,
-    searxng_url: Option<&str>,
+    search_backend_url: Option<&str>,
     llm_result: Option<&LlmSetupResult>,
 ) -> Result<(), String> {
     let mut config = ShellConfig::new();
@@ -559,7 +562,7 @@ fn save_shell_config(
     }
 
     // Add SearXNG URL if configured
-    if let Some(url) = searxng_url {
+    if let Some(url) = search_backend_url {
         config.export("CRW_SEARXNG_URL", url);
     }
 
@@ -588,7 +591,7 @@ fn save_shell_config(
 /// Show manual configuration instructions.
 fn show_manual_config(
     browser_installed: bool,
-    searxng_url: Option<&str>,
+    search_backend_url: Option<&str>,
     llm_result: Option<&LlmSetupResult>,
 ) {
     println!();
@@ -599,7 +602,7 @@ fn show_manual_config(
         println!("    export PATH=\"$HOME/.local/bin:$PATH\"");
     }
 
-    if let Some(url) = searxng_url {
+    if let Some(url) = search_backend_url {
         println!("    export CRW_SEARXNG_URL=\"{}\"", url);
     }
 
@@ -607,7 +610,7 @@ fn show_manual_config(
         llm::show_manual_config(llm);
     }
 
-    if !browser_installed && searxng_url.is_none() && llm_result.is_none() {
+    if !browser_installed && search_backend_url.is_none() && llm_result.is_none() {
         println!("    (no configuration needed)");
     }
 

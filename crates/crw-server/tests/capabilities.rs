@@ -33,7 +33,7 @@ fn can_screenshot(name: &str) -> bool {
 
 #[tokio::test]
 async fn search_off_reports_unsupported_and_no_answer() {
-    // Default config has no searxng_url → state.searxng = None.
+    // Default config has no search_backend_url → state.searxng = None.
     let body = caps(&app_from("")).await;
 
     assert_eq!(body["search"]["supported"], json!(false));
@@ -53,7 +53,7 @@ async fn search_on_without_server_llm_key_reports_no_answer() {
         r#"
 [search]
 enabled = true
-searxng_url = "http://127.0.0.1:18080"
+search_backend_url = "http://127.0.0.1:18080"
 "#,
     ))
     .await;
@@ -74,7 +74,7 @@ async fn search_on_with_server_llm_key_reports_answer() {
         r#"
 [search]
 enabled = true
-searxng_url = "http://127.0.0.1:18080"
+search_backend_url = "http://127.0.0.1:18080"
 
 [extraction.llm]
 provider = "anthropic"
@@ -96,7 +96,7 @@ async fn search_disabled_flag_overrides_configured_url() {
         r#"
 [search]
 enabled = false
-searxng_url = "http://127.0.0.1:18080"
+search_backend_url = "http://127.0.0.1:18080"
 "#,
     ))
     .await;

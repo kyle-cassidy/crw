@@ -278,7 +278,7 @@ pub async fn search_inner(
         .as_ref()
         .ok_or_else(|| {
             CrwError::SearchDisabled(
-                "Search is disabled. Set [search].searxng_url in config or define \
+                "Search is disabled. Set [search].search_backend_url in config or define \
                  CRW_SEARCH__SEARXNG_URL to point at a search backend instance."
                     .into(),
             )

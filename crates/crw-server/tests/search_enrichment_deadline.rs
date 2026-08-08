@@ -28,12 +28,12 @@ fn allow_loopback() {
     }
 }
 
-fn test_app(searxng_url: &str) -> TestServer {
+fn test_app(search_backend_url: &str) -> TestServer {
     let toml = format!(
         r#"
 [search]
 enabled = true
-searxng_url = "{searxng_url}"
+search_backend_url = "{search_backend_url}"
 timeout_ms = 5000
 
 [request]

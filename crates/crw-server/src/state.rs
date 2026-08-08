@@ -274,7 +274,7 @@ pub struct AppState {
     /// unbounded (config `max_aggregate_batch_pipelines = 0`/absent). Acquired
     /// as the first op in each batch URL future, before fetch.
     pub batch_pipeline_sem: Option<Arc<tokio::sync::Semaphore>>,
-    /// SearXNG client. `None` when `[search].searxng_url` is unset, in which
+    /// SearXNG client. `None` when `[search].search_backend_url` is unset, in which
     /// case `/v1/search` returns a clear `search_disabled` error.
     pub searxng: Option<Arc<SearxngClient>>,
     /// Server-wide default /map URL filter. `None` disables the filter
@@ -311,7 +311,7 @@ impl AppState {
         );
 
         let searxng = if config.search.enabled
-            && let Some(url) = config.search.searxng_url.as_ref()
+            && let Some(url) = config.search.resolve_backend_url()
         {
             // Dedicated reqwest client for SearXNG so its connection pool is
             // hot and isolated from the renderer / scrape paths. SearXNG runs
