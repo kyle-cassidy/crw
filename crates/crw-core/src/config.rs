@@ -2379,6 +2379,24 @@ mod tests {
             Some("http://current:8080"),
             "the current key name wins when both are set"
         );
+
+        // Production's literal shape, not an approximation of it: CRW_CONFIG
+        // selects config.docker.toml (which carries the legacy key) while the
+        // container also exports the legacy env var pointing somewhere else.
+        // The env var must win, and loading must not fail.
+        // CRW_CONFIG resolves relative to the process cwd, which under `cargo
+        // test` is the crate dir rather than the workspace root.
+        let docker_cfg = concat!(env!("CARGO_MANIFEST_DIR"), "/../../config.docker");
+        let cfg = load_with(&[
+            ("CRW_CONFIG", docker_cfg),
+            ("CRW_SEARCH__SEARXNG_URL", "http://search-orchestrator:8080"),
+        ])
+        .expect("the deployed config shape must load");
+        assert_eq!(
+            cfg.search.resolve_backend_url(),
+            Some("http://search-orchestrator:8080"),
+            "the deployed env var must beat the legacy key in config.docker.toml"
+        );
     }
 
     #[test]
