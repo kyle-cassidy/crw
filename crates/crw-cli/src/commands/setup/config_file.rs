@@ -41,8 +41,15 @@ pub struct ClientSection {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SearchSection {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub searxng_url: Option<String>,
+    /// `searxng_url` is the original spelling of this key. Existing
+    /// `~/.config/crw/config.toml` files still carry it, so it stays accepted
+    /// on read; we only ever write the new name.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "searxng_url"
+    )]
+    pub search_backend_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -122,7 +129,7 @@ fn merge_search(
         (None, u) => u,
         (b, None) => b,
         (Some(b), Some(u)) => Some(SearchSection {
-            searxng_url: u.searxng_url.or(b.searxng_url),
+            search_backend_url: u.search_backend_url.or(b.search_backend_url),
         }),
     }
 }
@@ -350,7 +357,7 @@ mod tests {
                 api_key: Some("test-key".into()),
             }),
             search: Some(SearchSection {
-                searxng_url: Some("http://localhost:8080".into()),
+                search_backend_url: Some("http://localhost:8080".into()),
             }),
             extraction: None,
         };
@@ -361,7 +368,7 @@ mod tests {
             Some("https://api.example.com")
         );
         assert_eq!(
-            on_disk.search.unwrap().searxng_url.as_deref(),
+            on_disk.search.unwrap().search_backend_url.as_deref(),
             Some("http://localhost:8080")
         );
         cleanup(&dir);
@@ -370,13 +377,13 @@ mod tests {
     #[test]
     fn second_write_merges_not_overwrites() {
         // Idempotency contract: writing just the LLM section must keep
-        // an earlier search.searxng_url intact.
+        // an earlier search.search_backend_url intact.
         let _g = env_lock();
         let dir = isolated_dir("merge");
 
         let first = UserConfig {
             search: Some(SearchSection {
-                searxng_url: Some("http://localhost:8080".into()),
+                search_backend_url: Some("http://localhost:8080".into()),
             }),
             ..Default::default()
         };
@@ -397,7 +404,7 @@ mod tests {
 
         let merged = read_user_config(&path).unwrap();
         assert_eq!(
-            merged.search.unwrap().searxng_url.as_deref(),
+            merged.search.unwrap().search_backend_url.as_deref(),
             Some("http://localhost:8080"),
             "first run's searxng_url must survive second write"
         );

@@ -86,7 +86,7 @@ async fn run_server() {
     // Issue #90: make the search subsystem's configured state visible at boot.
     // Three states (disabled / enabled-but-unconfigured / enabled) otherwise
     // collapse to a single request-time error. The host is origin-sanitized so
-    // a credentialed `searxng_url` never reaches the logs.
+    // a credentialed `search_backend_url` never reaches the logs.
     let (search_level, search_msg) = crw_server::diagnostics::search_startup_status(&config.search);
     match search_level {
         tracing::Level::WARN => tracing::warn!("{search_msg}"),
@@ -158,7 +158,11 @@ async fn run_server() {
     // compose healthcheck uses) and is bounded by its own short timeout —
     // never `connect_timeout`, which wouldn't bound a stalled response.
     if state.config.search.enabled
-        && let Some(raw_url) = state.config.search.searxng_url.clone()
+        && let Some(raw_url) = state
+            .config
+            .search
+            .resolve_backend_url()
+            .map(str::to_string)
     {
         let origin = crw_server::diagnostics::sanitize_url_origin(&raw_url);
         tokio::spawn(async move {

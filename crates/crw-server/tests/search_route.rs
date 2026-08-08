@@ -1,7 +1,7 @@
 //! Integration tests for `POST /v1/search`.
 //!
 //! Uses `wiremock` to stand up a fake SearXNG that the route's
-//! `SearxngClient` talks to via the configured `searxng_url`. We do NOT
+//! `SearxngClient` talks to via the configured `search_backend_url`. We do NOT
 //! exercise scrape enrichment here (it would need real network access);
 //! `crw-search` unit tests cover param mapping and result transforms.
 
@@ -18,7 +18,7 @@ fn test_app_with_searxng(url: &str) -> TestServer {
         r#"
 [search]
 enabled = true
-searxng_url = "{url}"
+search_backend_url = "{url}"
 timeout_ms = 5000
 "#
     );
@@ -36,7 +36,7 @@ fn test_app_with_searxng_and_llm(url: &str) -> TestServer {
         r#"
 [search]
 enabled = true
-searxng_url = "{url}"
+search_backend_url = "{url}"
 timeout_ms = 5000
 
 [extraction.llm]
@@ -59,7 +59,7 @@ fn test_app_with_structured_sources(url: &str) -> TestServer {
         r#"
 [search]
 enabled = true
-searxng_url = "{url}"
+search_backend_url = "{url}"
 timeout_ms = 5000
 use_structured_sources = true
 
@@ -76,7 +76,7 @@ model = "claude-sonnet-4-20250514"
 }
 
 fn test_app_search_disabled() -> TestServer {
-    // Default config has no searxng_url → state.searxng = None.
+    // Default config has no search_backend_url → state.searxng = None.
     let config: AppConfig = toml::from_str("").unwrap();
     let state = AppState::new(config).expect("AppState::new failed");
     let app = create_app(state);
@@ -250,7 +250,7 @@ async fn search_returns_grouped_when_sources_set() {
 
 #[tokio::test]
 async fn search_disabled_returns_503_with_search_disabled_code() {
-    // When `[search].searxng_url` is unset, the route returns 503 Service
+    // When `[search].search_backend_url` is unset, the route returns 503 Service
     // Unavailable + `error_code: "search_disabled"` so callers can distinguish
     // "operator turned this off" from a generic 400 (which would suggest a
     // bad request body).

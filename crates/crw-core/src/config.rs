@@ -261,17 +261,30 @@ pub const CLOAK_FIRST_LADDER_RESERVE_MS: u64 = 8_000;
 
 /// Configuration for the `/v1/search` endpoint and its SearXNG backend.
 ///
-/// When `searxng_url` is unset the endpoint returns HTTP 503 with
+/// When `search_backend_url` is unset the endpoint returns HTTP 503 with
 /// `error_code: "search_disabled"` — the route remains mounted so that
 /// startup doesn't have to know whether search will ever be configured.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SearchConfig {
     /// Master switch. Defaults to `true`; set to `false` to refuse all
-    /// `/v1/search` requests even if `searxng_url` is configured.
+    /// `/v1/search` requests even if a backend URL is configured.
     #[serde(default = "default_true_search")]
     pub enabled: bool,
-    /// Base URL of the SearXNG instance (e.g. `http://searxng:8080`).
+    /// Base URL of the self-hosted search backend (e.g. `http://search:8080`).
     /// `None` (the default) disables the endpoint with a clear error.
+    ///
+    /// Read this through [`SearchConfig::resolve_backend_url`], which folds in
+    /// the legacy spelling below.
+    #[serde(default)]
+    pub search_backend_url: Option<String>,
+    /// The original name of `search_backend_url`, kept so existing configs and
+    /// `CRW_SEARCH__SEARXNG_URL` keep working.
+    ///
+    /// This is a **separate field rather than a `#[serde(alias)]`** on purpose:
+    /// an alias makes serde fail with `duplicate field` as soon as both
+    /// spellings resolve at once, which is exactly what production does — the
+    /// old name in `config.docker.toml` plus the old env var. Two fields let
+    /// both arrive so we can pick a winner instead of refusing to start.
     #[serde(default)]
     pub searxng_url: Option<String>,
     /// OpenAlex API key for the `/v1/search/research/*` endpoints (CC0 data,
@@ -455,10 +468,24 @@ pub struct SearchConfig {
     pub answer_list_format: bool,
 }
 
+impl SearchConfig {
+    /// The effective search backend URL, preferring the current key name and
+    /// falling back to the original one.
+    ///
+    /// Every caller must go through this rather than reading either field, so
+    /// a deployment that still sets only the old name keeps working.
+    pub fn resolve_backend_url(&self) -> Option<&str> {
+        self.search_backend_url
+            .as_deref()
+            .or(self.searxng_url.as_deref())
+    }
+}
+
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
             enabled: true,
+            search_backend_url: None,
             searxng_url: None,
             openalex_api_key: None,
             openalex_mailto: None,
@@ -2299,6 +2326,61 @@ mod tests {
         assert!(cfg.mcp.hide_credits);
     }
 
+    /// The search backend URL was renamed from `searxng_url` to
+    /// `search_backend_url`. Production sets the OLD env var *and* carries the
+    /// old key in `config.docker.toml`, so two things must hold or live search
+    /// silently returns `search_disabled`: the legacy spelling still resolves,
+    /// and both spellings arriving together must not fail deserialization.
+    ///
+    /// A `#[serde(alias)]` satisfies the first and breaks the second with
+    /// `duplicate field`, which is why the legacy name is its own field.
+    ///
+    /// One test rather than three: each case mutates the same process-wide env,
+    /// so splitting them only races them against each other.
+    #[test]
+    fn search_backend_url_legacy_key_compat() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        let load_with = |vars: &[(&str, &str)]| {
+            for (k, v) in vars {
+                unsafe { std::env::set_var(k, v) };
+            }
+            let out = AppConfig::load();
+            for (k, _) in vars {
+                unsafe { std::env::remove_var(k) };
+            }
+            out
+        };
+
+        let cfg = load_with(&[("CRW_SEARCH__SEARXNG_URL", "http://legacy:8080")])
+            .expect("legacy-only config must deserialize");
+        assert_eq!(
+            cfg.search.resolve_backend_url(),
+            Some("http://legacy:8080"),
+            "legacy CRW_SEARCH__SEARXNG_URL must still resolve"
+        );
+
+        let cfg = load_with(&[("CRW_SEARCH__SEARCH_BACKEND_URL", "http://current:8080")])
+            .expect("current-only config must deserialize");
+        assert_eq!(
+            cfg.search.resolve_backend_url(),
+            Some("http://current:8080"),
+            "the canonical CRW_SEARCH__SEARCH_BACKEND_URL must work"
+        );
+
+        // The production shape: both spellings present at once.
+        let cfg = load_with(&[
+            ("CRW_SEARCH__SEARXNG_URL", "http://legacy:8080"),
+            ("CRW_SEARCH__SEARCH_BACKEND_URL", "http://current:8080"),
+        ])
+        .expect("both spellings together must not fail deserialization");
+        assert_eq!(
+            cfg.search.resolve_backend_url(),
+            Some("http://current:8080"),
+            "the current key name wins when both are set"
+        );
+    }
+
     #[test]
     fn default_app_config_enables_auto_extend() {
         // Programmatic Default must mirror serde defaults — issue #35.
@@ -2690,7 +2772,7 @@ api_url = "https://api.example.com"
 api_key = "test-key-123"
 
 [search]
-searxng_url = "http://localhost:9999"
+search_backend_url = "http://localhost:9999"
 
 [extraction.llm]
 provider = "deepseek"
@@ -2715,7 +2797,7 @@ model = "deepseek-chat"
         );
         assert_eq!(cfg.client.api_key.as_deref(), Some("test-key-123"));
         assert_eq!(
-            cfg.search.searxng_url.as_deref(),
+            cfg.search.search_backend_url.as_deref(),
             Some("http://localhost:9999")
         );
         let llm = cfg.extraction.llm.expect("llm config present");
@@ -2733,24 +2815,24 @@ model = "deepseek-chat"
             tmp.join("config.toml"),
             r#"
 [search]
-searxng_url = "http://from-file:8080"
+search_backend_url = "http://from-file:8080"
 "#,
         )
         .unwrap();
 
         unsafe {
             std::env::set_var("CRW_USER_CONFIG_DIR", &tmp);
-            std::env::set_var("CRW_SEARCH__SEARXNG_URL", "http://from-env:8080");
+            std::env::set_var("CRW_SEARCH__SEARCH_BACKEND_URL", "http://from-env:8080");
         }
         let cfg = AppConfig::load().unwrap();
         unsafe {
             std::env::remove_var("CRW_USER_CONFIG_DIR");
-            std::env::remove_var("CRW_SEARCH__SEARXNG_URL");
+            std::env::remove_var("CRW_SEARCH__SEARCH_BACKEND_URL");
         }
         std::fs::remove_dir_all(&tmp).ok();
 
         assert_eq!(
-            cfg.search.searxng_url.as_deref(),
+            cfg.search.search_backend_url.as_deref(),
             Some("http://from-env:8080"),
             "env var must win over user config file"
         );

@@ -35,12 +35,21 @@ pub struct SearchArgs {
 
     /// Search backend instance URL.
     ///
-    /// Resolution order: this flag > `CRW_SEARXNG_URL` env > `search.searxng_url`
-    /// in `~/.config/crw/config.toml` > `http://127.0.0.1:8080` (the default
-    /// `crw setup --local` sidecar). Public instances usually block JSON
-    /// requests with 403/429 — prefer a local sidecar.
-    #[arg(long, env = "CRW_SEARXNG_URL")]
-    pub searxng_url: Option<String>,
+    /// Resolution order: this flag > `CRW_SEARCH_BACKEND_URL` env >
+    /// `search.search_backend_url` in `~/.config/crw/config.toml` >
+    /// `http://127.0.0.1:8080` (the default `crw setup --local` sidecar).
+    /// Public instances usually block JSON requests with 403/429 — prefer a
+    /// local sidecar.
+    ///
+    /// `--searxng-url` and `CRW_SEARXNG_URL` are the original names and still
+    /// work.
+    #[arg(
+        long,
+        visible_alias = "searxng-url",
+        env = "CRW_SEARCH_BACKEND_URL",
+        value_name = "URL"
+    )]
+    pub search_backend_url: Option<String>,
 
     /// Output format
     #[arg(short, long, value_enum, default_value = "text")]
@@ -90,9 +99,9 @@ pub async fn run(args: SearchArgs) {
             .expect("failed to build HTTP client"),
     );
 
-    let searxng_url = resolve_searxng_url(args.searxng_url.as_deref());
+    let search_backend_url = resolve_searxng_url(args.search_backend_url.as_deref());
 
-    let client = SearxngClient::new(http, &searxng_url, Duration::from_secs(args.timeout));
+    let client = SearxngClient::new(http, &search_backend_url, Duration::from_secs(args.timeout));
 
     let params = SearxngParams {
         q: args.query.clone(),
@@ -109,7 +118,10 @@ pub async fn run(args: SearchArgs) {
         Err(e) => {
             eprintln!("error: search failed: {e}");
             eprintln!();
-            eprintln!("hint: the search backend is unreachable at {}", searxng_url);
+            eprintln!(
+                "hint: the search backend is unreachable at {}",
+                search_backend_url
+            );
             eprintln!();
             eprintln!("      Easiest fix — let `crw setup` boot a local one for you:");
             eprintln!("          crw setup --local");
@@ -239,7 +251,7 @@ pub async fn run(args: SearchArgs) {
 
 /// Pick the SearXNG URL from (in priority order):
 ///   1. CLI flag / env (already merged by clap into `cli`)
-///   2. `search.searxng_url` from `~/.config/crw/config.toml`
+///   2. `search.search_backend_url` from `~/.config/crw/config.toml`
 ///   3. The hardcoded `http://localhost:8080` fallback
 ///
 /// Step 2 is what makes `crw setup` -> `crw search` work without the user
@@ -248,8 +260,16 @@ fn resolve_searxng_url(cli: Option<&str>) -> String {
     if let Some(url) = cli {
         return url.to_string();
     }
+    // The flag's env is CRW_SEARCH_BACKEND_URL; CRW_SEARXNG_URL was its original
+    // name. clap only binds one env per arg, so honour the old one here rather
+    // than breaking shells that already export it.
+    if let Ok(url) = std::env::var("CRW_SEARXNG_URL")
+        && !url.is_empty()
+    {
+        return url;
+    }
     if let Ok(cfg) = crw_core::config::AppConfig::load()
-        && let Some(url) = cfg.search.searxng_url
+        && let Some(url) = cfg.search.search_backend_url
     {
         return url;
     }

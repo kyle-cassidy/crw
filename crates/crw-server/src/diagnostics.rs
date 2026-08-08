@@ -1,6 +1,6 @@
 //! Operator-facing diagnostics helpers (issue #90).
 //!
-//! `searxng_url` is operator-set and can carry secrets (`https://user:pass@host`,
+//! `search_backend_url` is operator-set and can carry secrets (`https://user:pass@host`,
 //! a `?token=…`, or a token embedded in the path of a reverse-proxy URL). Anything
 //! we log or return in an error must be sanitized to the bare origin first.
 
@@ -26,15 +26,15 @@ pub fn sanitize_url_origin(raw: &str) -> String {
 /// log. Distinguishes the three states that otherwise collapse to a single
 /// "search disabled" at request time:
 ///   - `enabled = false`            → intentionally off
-///   - enabled, `searxng_url` unset → misconfigured (every call will 503)
-///   - enabled, `searxng_url` set   → active (host shown, origin-sanitized)
+///   - enabled, `search_backend_url` unset → misconfigured (every call will 503)
+///   - enabled, `search_backend_url` set   → active (host shown, origin-sanitized)
 pub fn search_startup_status(cfg: &SearchConfig) -> (Level, String) {
     if !cfg.enabled {
         (
             Level::INFO,
             "search: disabled ([search].enabled = false)".to_string(),
         )
-    } else if let Some(url) = &cfg.searxng_url {
+    } else if let Some(url) = cfg.resolve_backend_url() {
         (
             Level::INFO,
             format!("search: enabled (searxng={})", sanitize_url_origin(url)),

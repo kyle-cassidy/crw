@@ -30,7 +30,7 @@ fn test_app_with_searxng(url: &str) -> TestServer {
         r#"
 [search]
 enabled = true
-searxng_url = "{url}"
+search_backend_url = "{url}"
 timeout_ms = 5000
 "#
     );
@@ -47,7 +47,7 @@ api_keys = ["secret-key"]
 
 [search]
 enabled = true
-searxng_url = "{url}"
+search_backend_url = "{url}"
 timeout_ms = 5000
 "#
     );

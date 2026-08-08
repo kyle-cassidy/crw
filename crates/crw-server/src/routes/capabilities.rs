@@ -154,7 +154,7 @@ pub struct FormatCapabilities {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchCapabilities {
-    /// `/v1/search` is usable: `search.enabled` AND `search.searxng_url` are
+    /// `/v1/search` is usable: `search.enabled` AND `search.search_backend_url` are
     /// set. Configured, not health-probed — a configured-but-unreachable
     /// backend still reports `true`.
     pub supported: bool,
@@ -245,7 +245,7 @@ pub async fn capabilities(State(state): State<AppState>) -> Json<Capabilities> {
     let llm_ready_without_caller_key = server_key_configured && !byok_header_required;
 
     // Search is usable exactly when the SearXNG client was constructed, which
-    // happens only when `search.enabled && search.searxng_url.is_some()`.
+    // happens only when `search.enabled && search.search_backend_url.is_some()`.
     let search_supported = state.searxng.is_some();
     // Answer / summarize additionally need an LLM. Report what works with NO
     // caller-supplied key; BYOK still enables them per request.
