@@ -21,7 +21,7 @@ curl -X POST http://localhost:3000/v1/scrape \
 ## What You Get
 
 - the same core self-hosted routes: `scrape`, `crawl`, `map`, `mcp`, `health`
-- `search` too, when you run the Docker stack — it boots a SearXNG sidecar so `/v1/search` and the `crw_search` MCP tool work out of the box (see [Docker → Search (SearXNG)](/docker))
+- `search` too, when you run the Docker stack — it boots a search sidecar so `/v1/search` and the `crw_search` MCP tool work out of the box (see [Docker → Search backend](/docker))
 - optional auth with Bearer tokens
 - optional browser-backed rendering
 - your own reverse proxy, logging, rate limits, and deployment choices
@@ -34,7 +34,7 @@ Three deployment paths cover most self-hosted use cases. Choose based on how muc
 |---|---|---|---|
 | **Setup effort** | Lowest — one binary, one TOML | Medium — `docker compose up -d`, two or three sidecars | Highest — compose + stealth override file, token rotation |
 | **JS rendering included** | No — LightPanda must be started separately; Chrome disabled by default | Yes — LightPanda bundled; Chrome via `--profile heavy` | Yes — browserless/chromium with anti-fingerprint plugin (`--profile stealth`), +2.5 pt success over vanilla Chrome |
-| **Search (`/v1/search`) included** | No — `searxng_url` not set; returns `search_disabled` until you point it at your own SearXNG | Yes — SearXNG sidecar auto-started; `/v1/search` and `crw_search` MCP tool work out of the box | Yes — same as `config.docker` |
+| **Search (`/v1/search`) included** | No — `search_backend_url` not set; returns `search_disabled` until you point it at a backend you run | Yes — search sidecar auto-started; `/v1/search` and `crw_search` MCP tool work out of the box | Yes — same as `config.docker` |
 | **Rate limit default** | 10 req/s global | Unlimited (0) — per-host limits still apply | Unlimited (0) |
 | **Best for** | Local dev, CI, minimal VPS where you control sidecars yourself | Standard production VPS or server | Production workloads on bot-protected targets; requires SSPL-3.0 license review before exposing to third parties |
 

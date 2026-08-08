@@ -91,7 +91,7 @@ Treat page fetching and browser rendering as higher-risk components than your ap
 Both variables ship with **publicly-known placeholder defaults** in the repository. These defaults are intentional for local dev but must be replaced before any internet-facing or shared deployment.
 
 **`SEARXNG_SECRET_KEY`** (`docker-compose.yml` line: `${SEARXNG_SECRET_KEY:-change-me-with-openssl-rand-hex-32-please}`):
-SearXNG uses this key to sign session cookies. Anyone who knows the default value can forge cookies against your SearXNG instance. Generate a real key and inject it:
+The search backend uses this key to sign session cookies. Anyone who knows the default value can forge cookies against your instance. Generate a real key and inject it:
 
 ```bash
 echo "SEARXNG_SECRET_KEY=$(openssl rand -hex 32)" >> .env

@@ -589,7 +589,7 @@
                       "properties": {
                         "supported": {
                           "type": "boolean",
-                          "description": "POST /v1/search is usable: [search].enabled and search.searxng_url are set. Configured, not health-probed."
+                          "description": "POST /v1/search is usable: [search].enabled and search.search_backend_url are set. Configured, not health-probed."
                         },
                         "answer": {
                           "type": "boolean",

@@ -124,8 +124,8 @@ switches to subprocess mode automatically.
 | Change diff | `change_tracking_diff(...)` | `changeTrackingDiff(...)` | HTTP only |
 | Shutdown | `close()` | `close()` | — |
 
-¹ Local mode requires `[search].searxng_url` configured on the engine; the managed
-cloud has SearXNG preconfigured.
+¹ Local mode requires `[search].search_backend_url` configured on the engine; the
+managed cloud has a search backend preconfigured.
 
 ---
 
@@ -450,7 +450,7 @@ try {
 | `scrape` | yes | yes |
 | `crawl` | yes | yes |
 | `map` | yes | yes |
-| `search` | yes | yes (needs SearXNG configured) |
+| `search` | yes | yes (needs a search backend configured) |
 | `parse_file` / `parseFile` | yes | yes |
 | `extract` | yes | no |
 | `batch_scrape` / `batchScrape` | yes | no |

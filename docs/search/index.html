@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search — CRW Docs</title>
-  <meta name="description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled SearXNG sidecar — no third-party API key needed. Free, self-hostable al">
+  <meta name="description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled search sidecar — no third-party API key needed. Free, self-hostable alt">
   <meta name="keywords" content="web scraper, web crawler, firecrawl alternative, crawl4ai alternative, self-hosted scraper, rust web scraper, mcp server, ai web scraping, rag pipeline, llm extraction, open source crawler, headless browser scraper">
   <link rel="canonical" href="https://docs.fastcrw.com/search">
   <link rel="icon" href="/favicon.png?v=2" type="image/png">
@@ -15,13 +15,13 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://docs.fastcrw.com/search">
   <meta property="og:title" content="Search — CRW | Web Scraper in Rust">
-  <meta property="og:description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled SearXNG sidecar — no third-party API key needed. Free, self-hostable al">
+  <meta property="og:description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled search sidecar — no third-party API key needed. Free, self-hostable alt">
   <meta property="og:site_name" content="CRW">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Search — CRW Docs">
-  <meta name="twitter:description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled SearXNG sidecar — no third-party API key needed. Free, self-hostable al">
+  <meta name="twitter:description" content="Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled search sidecar — no third-party API key needed. Free, self-hostable alt">
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
@@ -285,10 +285,10 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
       <article id="article" role="main"><div class="page-intro">
   <div class="page-kicker">Core Endpoint</div>
   <h1 id="search">Search</h1>
-  <p class="page-subtitle">Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled SearXNG sidecar — no third-party API key needed. Free, self-hostable alternative to Tavily / Serper / Brave Search.</p>
+  <p class="page-subtitle">Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled search sidecar — no third-party API key needed. Free, self-hostable alternative to Tavily / Serper / Brave Search.</p>
   <div class="page-capabilities">
     <div class="page-capability"><strong>Best for:</strong> unknown URLs</div>
-    <div class="page-capability"><strong>Self-hosted:</strong> bundled SearXNG sidecar</div>
+    <div class="page-capability"><strong>Self-hosted:</strong> bundled search sidecar</div>
     <div class="page-capability"><strong>Hosted:</strong> fastcrw.com (managed)</div>
     <div class="page-capability"><strong>Start with:</strong> search only, then add scraping</div>
   </div>
@@ -304,7 +304,7 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
     <a class="page-btn primary" href="https://fastcrw.com/playground" target="_blank" rel="noopener">Open Playground</a>
     <a class="page-btn secondary" href="https://fastcrw.com/register" target="_blank" rel="noopener">Get API Key</a>
   </div>
-</div><div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">**Self-hosted users**: `docker compose up` boots a SearXNG sidecar automatically (reachable inside the Compose network as `searxng:8080`). `/v1/search` is live on `http://localhost:3000` with no extra setup. To point at an existing SearXNG instance instead, set `CRW_SEARCH__SEARXNG_URL=http://your-host:8080` and remove the `searxng` service from your compose file. To disable search entirely, set `[search].enabled = false` — the route returns a clear `search_disabled` error (HTTP 503). See the [Docker → Search (SearXNG)](/docker) section for the full setup, the `SEARXNG_BASE_URL` vs `searxng_url` distinction, and cold-start timing.</div></div><h2 id="searching-the-web-with-crw">Searching the web with CRW</h2>
+</div><div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">**Self-hosted users**: `docker compose up` boots the search sidecar automatically (reachable inside the Compose network as `searxng:8080`). `/v1/search` is live on `http://localhost:3000` with no extra setup. To point at a search backend you already run instead, set `CRW_SEARCH__SEARCH_BACKEND_URL=http://your-host:8080` and remove the `searxng` service from your compose file. To disable search entirely, set `[search].enabled = false` — the route returns a clear `search_disabled` error (HTTP 503). See the [Docker → Search backend](/docker) section for the full setup, the `SEARXNG_BASE_URL` vs `search_backend_url` distinction, and cold-start timing.</div></div><h2 id="searching-the-web-with-crw">Searching the web with CRW</h2>
 <h3 id="v1search">/v1/search</h3>
 <pre data-lang="http"><code class="language-http">POST http://localhost:3000/v1/search          # self-hosted
 POST https://api.fastcrw.com/v1/search        # hosted</code></pre>
@@ -437,7 +437,7 @@ those four fields as siblings inside `data`. Portable clients should read
 <td><code>categories</code></td>
 <td>string[]</td>
 <td>--</td>
-<td>Curated filters (<code>&quot;github&quot;</code>, <code>&quot;research&quot;</code>, <code>&quot;pdf&quot;</code>) <strong>plus</strong> any native SearXNG category (<code>&quot;science&quot;</code>, <code>&quot;it&quot;</code>, <code>&quot;news&quot;</code>, <code>&quot;files&quot;</code>, …) passed straight through. Max 5 entries. See <a href="#curated-vs-passthrough-categories">Curated vs. passthrough categories</a></td>
+<td>Curated filters (<code>&quot;github&quot;</code>, <code>&quot;research&quot;</code>, <code>&quot;pdf&quot;</code>) <strong>plus</strong> any native search-backend category (<code>&quot;science&quot;</code>, <code>&quot;it&quot;</code>, <code>&quot;news&quot;</code>, <code>&quot;files&quot;</code>, …) passed straight through. Max 5 entries. See <a href="#curated-vs-passthrough-categories">Curated vs. passthrough categories</a></td>
 </tr>
 <tr>
 <td><code>scrapeOptions</code></td>
@@ -687,10 +687,10 @@ with nothing to report are omitted, not emitted as <code>null</code> or <code>[]
 <tr>
 <td>anything else</td>
 <td>passthrough</td>
-<td>Forwarded verbatim to SearXNG&#39;s native <code>categories</code> parameter — <code>science</code>, <code>it</code>, <code>news</code>, <code>files</code>, <code>images</code>, <code>map</code>, <code>music</code>, <code>social media</code>, …</td>
+<td>Forwarded verbatim to the search backend&#39;s native <code>categories</code> parameter — <code>science</code>, <code>it</code>, <code>news</code>, <code>files</code>, <code>images</code>, <code>map</code>, <code>music</code>, <code>social media</code>, …</td>
 </tr>
 </tbody></table>
-<p>The curated names (<code>github</code>/<code>research</code>/<code>pdf</code>) are <strong>Firecrawl-compatible</strong> and behave exactly as before. Passthrough values are the additive part: CRW does not maintain its own engine list for them — it hands the category string to SearXNG, which already knows the engine→category routing from its own <code>settings.yml</code>. That means new categories work <strong>without any CRW code or config change</strong>, and your self-hosted SearXNG governs exactly which engines each category hits.</p>
+<p>The curated names (<code>github</code>/<code>research</code>/<code>pdf</code>) are <strong>Firecrawl-compatible</strong> and behave exactly as before. Passthrough values are the additive part: CRW does not maintain its own engine list for them — it hands the category string to the search backend, which already knows the engine→category routing from its own <code>settings.yml</code>. That means new categories work <strong>without any CRW code or config change</strong>, and your self-hosted backend governs exactly which engines each category hits.</p>
 <pre data-lang="json"><code class="language-json">{
   &quot;query&quot;: &quot;crispr base editing&quot;,
   &quot;categories&quot;: [&quot;science&quot;],
@@ -700,13 +700,13 @@ with nothing to report are omitted, not emitted as <code>null</code> or <code>[]
   &quot;query&quot;: &quot;rust async runtime&quot;,
   &quot;categories&quot;: [&quot;research&quot;, &quot;it&quot;]
 }</code></pre>
-<p>In the second example, <code>research</code> still drives CRW&#39;s curated academic engines while <code>it</code> is forwarded to SearXNG as a native category — both apply to the same query.</p>
-<div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">Which passthrough categories actually return results depends on the engines your SearXNG instance enables. The bundled sidecar uses `use_default_settings: true` (see `config/searxng/settings.yml`), so all of upstream SearXNG's default categories are available. An unknown or disabled category is silently ignored by SearXNG (it falls back to `general`) rather than erroring. The list of categories a given instance exposes is documented under [SearXNG → Configured Engines](https://docs.searxng.org/user/configured_engines.html).</div></div><h3 id="searxng-query-parameters-crw-sends">SearXNG query parameters CRW sends</h3>
-<p>For reference (and when debugging a self-hosted SearXNG directly), this is how the public request fields map onto the SearXNG <code>/search</code> query parameters CRW emits:</p>
+<p>In the second example, <code>research</code> still drives CRW&#39;s curated academic engines while <code>it</code> is forwarded to the search backend as a native category — both apply to the same query.</p>
+<div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">Which passthrough categories actually return results depends on the engines your search backend enables. The bundled sidecar uses `use_default_settings: true` (see `config/searxng/settings.yml`), so all of the upstream defaults are available. An unknown or disabled category is silently ignored by the backend (it falls back to `general`) rather than erroring. The categories a given instance exposes are governed by that same mounted `settings.yml`.</div></div><h3 id="backend-query-parameters-crw-sends">Backend query parameters CRW sends</h3>
+<p>For reference (and when debugging a self-hosted backend directly), this is how the public request fields map onto the <code>/search</code> query parameters CRW emits:</p>
 <table>
 <thead>
 <tr>
-<th>SearXNG param</th>
+<th>Backend param</th>
 <th>Sourced from</th>
 <th>Notes</th>
 </tr>
@@ -742,9 +742,9 @@ with nothing to report are omitted, not emitted as <code>null</code> or <code>[]
 <td>Always <code>json</code> (the sidecar enables the JSON formatter; HTML stays on for debugging).</td>
 </tr>
 </tbody></table>
-<p><code>pageno</code> and <code>safesearch</code> are available on the low-level <code>crw search</code> CLI but are not exposed on <code>/v1/search</code>. Full upstream reference: <a href="https://docs.searxng.org/dev/search_api.html">SearXNG Search API</a>.</p>
-<h2 id="self-hosting-the-searxng-sidecar">Self-hosting the SearXNG sidecar</h2>
-<p>The default <code>docker-compose.yml</code> ships a hardened SearXNG container:</p>
+<p><code>pageno</code> and <code>safesearch</code> are available on the low-level <code>crw search</code> CLI but are not exposed on <code>/v1/search</code>.</p>
+<h2 id="self-hosting-the-search-sidecar">Self-hosting the search sidecar</h2>
+<p>The default <code>docker-compose.yml</code> ships a hardened search container:</p>
 <ul>
 <li>Read-only root filesystem with sized tmpfs scratch</li>
 <li>All Linux capabilities dropped, <code>no-new-privileges</code></li>
@@ -752,7 +752,7 @@ with nothing to report are omitted, not emitted as <code>null</code> or <code>[]
 <li>Pinned upstream image tag (we never run <code>:latest</code>)</li>
 <li>Config mounted read-only from <code>config/searxng/settings.yml</code></li>
 </ul>
-<p>It is mere-aggregation under AGPL — you are running an unmodified upstream SearXNG image with config mounted at runtime, so no §13 corresponding-source obligations attach to the image itself. If you redistribute your CRW deployment publicly, AGPL §13 still requires you to offer the corresponding source of CRW (which is already on GitHub) to your users.</p>
+<p>It is mere-aggregation under AGPL — you are running an unmodified upstream image with config mounted at runtime, so no §13 corresponding-source obligations attach to the image itself. If you redistribute your CRW deployment publicly, AGPL §13 still requires you to offer the corresponding source of CRW (which is already on GitHub) to your users.</p>
 <h2 id="common-production-patterns">Common production patterns</h2>
 <ul>
 <li>Start with search only, then add <code>scrapeOptions</code> after you verify result quality.</li>
@@ -764,7 +764,7 @@ with nothing to report are omitted, not emitted as <code>null</code> or <code>[]
 <ul>
 <li>Adding <code>scrapeOptions</code> to every search before you know you need page content</li>
 <li>Confusing <code>sources</code> with <code>categories</code></li>
-<li>Treating <code>qdr:h</code> as truly hourly precision; SearXNG collapses it to <code>day</code></li>
+<li>Treating <code>qdr:h</code> as truly hourly precision; the backend collapses it to <code>day</code></li>
 <li>Sending <code>plainText</code> or <code>json</code> in <code>scrapeOptions.formats</code> — use <code>/v1/scrape</code> for those</li>
 </ul>
 <h2 id="when-to-use-something-else">When to use something else</h2>

@@ -222,7 +222,7 @@ Self-hosted deployments differ from the hosted API in several ways a caller cann
 - PDF parsing may be disabled (`[document] enabled = false`) or not compiled in
 - A server-side LLM key may or may not be configured
 - The `[document] max_upload_bytes` limit can be set below 50 MiB
-- The search backend may not be connected (`[search] searxng_url` unset)
+- The search backend may not be connected (`[search] search_backend_url` unset)
 
 Always call `/v1/capabilities` before making assumptions about what a self-hosted instance can do.
 

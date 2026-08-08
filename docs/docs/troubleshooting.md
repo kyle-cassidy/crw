@@ -261,44 +261,49 @@ result = scrape_with_retry("https://example.com", "crw_live_YOUR_KEY")
 
 ### 6a. `error_code: "search_disabled"` (503)
 
-**Cause:** The engine has no SearXNG instance configured. The search route requires `[search].searxng_url` in config or the `CRW_SEARCH__SEARXNG_URL` environment variable.
+**Cause:** The engine has no search backend configured. The search route requires `[search].search_backend_url` in config or the `CRW_SEARCH__SEARCH_BACKEND_URL` environment variable.
 
 **Fix (self-hosted):**
 
+```bash
+# Quickest self-hosted setup — boot the bundled search sidecar
+crw setup --local
+```
+
 ```toml
+# Or point at a backend you already run
 # config.toml
 [search]
-searxng_url = "http://localhost:8080"
+search_backend_url = "http://localhost:8080"
 ```
 
 ```bash
 # Or via environment variable
-export CRW_SEARCH__SEARXNG_URL=http://localhost:8080
+export CRW_SEARCH__SEARCH_BACKEND_URL=http://localhost:8080
 ```
 
 ```bash
-# Quickest self-hosted setup — use the bundled docker-compose
+# The bundled docker-compose.yml already wires CRW to the search sidecar
 docker compose up -d
-# The bundled docker-compose.yml already wires CRW to the searxng sidecar
 ```
 
 **fastcrw.com cloud:** `search_disabled` never occurs on the managed SaaS tier. `crw_search` is always available.
 
 ### 6b. Empty results array (no error)
 
-**Cause:** SearXNG returned zero results — usually because no search engines are enabled in the SearXNG instance, the instance is rate-limited by upstream search providers, or the query matched no results.
+**Cause:** The search backend returned zero results — usually because no search engines are enabled on it, the instance is rate-limited by upstream search providers, or the query matched no results.
 
 **Diagnosis:**
 
 ```bash
-# Hit the SearXNG UI directly to check it is working
+# Hit the backend directly to check it is working
 curl "http://localhost:8080/?q=test+query&format=json" | jq '.results | length'
 
-# Check which engines SearXNG has enabled
+# Check which engines the backend has enabled
 curl "http://localhost:8080/config" | jq '.engines[] | select(.enabled == true) | .name'
 ```
 
-**Fix:** Enable engines in the SearXNG `settings.yml`, or use the bundled Docker image which comes pre-configured.
+**Fix:** Enable engines in the backend's `settings.yml`, or use the bundled Docker image which comes pre-configured.
 
 ---
 
@@ -341,10 +346,10 @@ Find your `npx` path with `which npx` in a terminal.
 
 ### 7d. `crw_search` is missing but other tools appear (embedded mode)
 
-`crw_search` is only advertised when a SearXNG backend is configured. In embedded mode with no SearXNG, the tool is intentionally hidden. To get `crw_search`, either:
+`crw_search` is only advertised when a search backend is configured. In embedded mode with no backend, the tool is intentionally hidden. To get `crw_search`, either:
 
 - Switch to fastcrw.com cloud mode (`CRW_API_URL` + `CRW_API_KEY`), or
-- Run a local SearXNG and set `CRW_SEARCH__SEARXNG_URL`.
+- Run `crw setup --local` to boot a local backend, or set `CRW_SEARCH__SEARCH_BACKEND_URL` to one you already run.
 
 ### 7e. Diagnosing with the JSON-RPC wire
 
@@ -409,7 +414,7 @@ if data["balance"] < 100:
 | `http_error` | 502 | Network-level error reaching the target |
 | `timeout` | 504 | Engine or upstream search timed out |
 | `rate_limited` | 429 | RPM rate limit (engine-level) |
-| `search_disabled` | 503 | `/v1/search` called with no SearXNG configured |
+| `search_disabled` | 503 | `/v1/search` called with no search backend configured |
 | `not_found` | 404 | Unknown endpoint or crawl job ID does not exist |
 | `anti_bot` | 4xx/5xx | Anti-bot interstitial detected — always `success: false`; detect via `error_code: "anti_bot"` |
 | `renderer_error` | 500 | CDP browser internal error |

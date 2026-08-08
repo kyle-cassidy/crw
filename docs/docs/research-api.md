@@ -113,7 +113,7 @@ npx skills add us/crw@crw-research
 
 ## Notes and limits
 
-- **Live, no index.** Recall comes from merging our own SearXNG search (web +
+- **Live, no index.** Recall comes from merging our own web search (web +
   research mode) with live open scholarly sources + full-text paper search.
   Latency is seconds, not the milliseconds of a hot index.
 - **Read passages** are abstract-scoped today; full arXiv-body passages are on

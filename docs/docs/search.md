@@ -1,10 +1,10 @@
 <div class="page-intro">
   <div class="page-kicker">Core Endpoint</div>
   <h1>Search</h1>
-  <p class="page-subtitle">Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled SearXNG sidecar — no third-party API key needed. Free, self-hostable alternative to Tavily / Serper / Brave Search.</p>
+  <p class="page-subtitle">Search the web first, then optionally scrape the results you care about. Works out of the box on self-hosted CRW via the bundled search sidecar — no third-party API key needed. Free, self-hostable alternative to Tavily / Serper / Brave Search.</p>
   <div class="page-capabilities">
     <div class="page-capability"><strong>Best for:</strong> unknown URLs</div>
-    <div class="page-capability"><strong>Self-hosted:</strong> bundled SearXNG sidecar</div>
+    <div class="page-capability"><strong>Self-hosted:</strong> bundled search sidecar</div>
     <div class="page-capability"><strong>Hosted:</strong> fastcrw.com (managed)</div>
     <div class="page-capability"><strong>Start with:</strong> search only, then add scraping</div>
   </div>
@@ -25,7 +25,7 @@
 </div>
 
 :::note
-**Self-hosted users**: `docker compose up` boots a SearXNG sidecar automatically (reachable inside the Compose network as `searxng:8080`). `/v1/search` is live on `http://localhost:3000` with no extra setup. To point at an existing SearXNG instance instead, set `CRW_SEARCH__SEARXNG_URL=http://your-host:8080` and remove the `searxng` service from your compose file. To disable search entirely, set `[search].enabled = false` — the route returns a clear `search_disabled` error (HTTP 503). See the [Docker → Search (SearXNG)](/docker) section for the full setup, the `SEARXNG_BASE_URL` vs `searxng_url` distinction, and cold-start timing.
+**Self-hosted users**: `docker compose up` boots the search sidecar automatically (reachable inside the Compose network as `searxng:8080`). `/v1/search` is live on `http://localhost:3000` with no extra setup. To point at a search backend you already run instead, set `CRW_SEARCH__SEARCH_BACKEND_URL=http://your-host:8080` and remove the `searxng` service from your compose file. To disable search entirely, set `[search].enabled = false` — the route returns a clear `search_disabled` error (HTTP 503). See the [Docker → Search backend](/docker) section for the full setup, the `SEARXNG_BASE_URL` vs `search_backend_url` distinction, and cold-start timing.
 :::
 
 ## Searching the web with CRW
@@ -160,7 +160,7 @@ those four fields as siblings inside `data`. Portable clients should read
 | `lang` | string | -- | Result language hint such as `"en"` or `"tr"` |
 | `tbs` | string | -- | Recency filter: `qdr:h`, `qdr:d`, `qdr:w`, `qdr:m`, `qdr:y` |
 | `sources` | string[] | -- | Result groups such as `"web"`, `"news"`, `"images"` |
-| `categories` | string[] | -- | Curated filters (`"github"`, `"research"`, `"pdf"`) **plus** any native SearXNG category (`"science"`, `"it"`, `"news"`, `"files"`, …) passed straight through. Max 5 entries. See [Curated vs. passthrough categories](#curated-vs-passthrough-categories) |
+| `categories` | string[] | -- | Curated filters (`"github"`, `"research"`, `"pdf"`) **plus** any native search-backend category (`"science"`, `"it"`, `"news"`, `"files"`, …) passed straight through. Max 5 entries. See [Curated vs. passthrough categories](#curated-vs-passthrough-categories) |
 | `scrapeOptions` | object | -- | Scrape each result URL after search |
 | `summarizeResults` | boolean | `false` | When `true`, each scraped result is summarized by the LLM and the digest appears in `result.summary`. Needs LLM config (per-request key or server). Fan-out is bounded by `[extraction.llm].max_concurrency`. |
 | `answer` | boolean | `false` | When `true`, after scraping the top results crw synthesizes a single answer over them. The answer + `citations` land on the response wrapper. |
@@ -329,9 +329,9 @@ Good default: add one narrowing control at a time so you can see which one actua
 | `github` | curated | Switches to the engines in `[search].github_engines` (default: `github`). |
 | `research` | curated | Switches to the engines in `[search].research_engines` (default: `arxiv`, `crossref`, `google scholar`, `semantic scholar`). |
 | `pdf` | curated | Appends ` filetype:pdf` to the query (not an engine switch). |
-| anything else | passthrough | Forwarded verbatim to SearXNG's native `categories` parameter — `science`, `it`, `news`, `files`, `images`, `map`, `music`, `social media`, … |
+| anything else | passthrough | Forwarded verbatim to the search backend's native `categories` parameter — `science`, `it`, `news`, `files`, `images`, `map`, `music`, `social media`, … |
 
-The curated names (`github`/`research`/`pdf`) are **Firecrawl-compatible** and behave exactly as before. Passthrough values are the additive part: CRW does not maintain its own engine list for them — it hands the category string to SearXNG, which already knows the engine→category routing from its own `settings.yml`. That means new categories work **without any CRW code or config change**, and your self-hosted SearXNG governs exactly which engines each category hits.
+The curated names (`github`/`research`/`pdf`) are **Firecrawl-compatible** and behave exactly as before. Passthrough values are the additive part: CRW does not maintain its own engine list for them — it hands the category string to the search backend, which already knows the engine→category routing from its own `settings.yml`. That means new categories work **without any CRW code or config change**, and your self-hosted backend governs exactly which engines each category hits.
 
 ```json
 {
@@ -348,17 +348,17 @@ The curated names (`github`/`research`/`pdf`) are **Firecrawl-compatible** and b
 }
 ```
 
-In the second example, `research` still drives CRW's curated academic engines while `it` is forwarded to SearXNG as a native category — both apply to the same query.
+In the second example, `research` still drives CRW's curated academic engines while `it` is forwarded to the search backend as a native category — both apply to the same query.
 
 :::note
-Which passthrough categories actually return results depends on the engines your SearXNG instance enables. The bundled sidecar uses `use_default_settings: true` (see `config/searxng/settings.yml`), so all of upstream SearXNG's default categories are available. An unknown or disabled category is silently ignored by SearXNG (it falls back to `general`) rather than erroring. The list of categories a given instance exposes is documented under [SearXNG → Configured Engines](https://docs.searxng.org/user/configured_engines.html).
+Which passthrough categories actually return results depends on the engines your search backend enables. The bundled sidecar uses `use_default_settings: true` (see `config/searxng/settings.yml`), so all of the upstream defaults are available. An unknown or disabled category is silently ignored by the backend (it falls back to `general`) rather than erroring. The categories a given instance exposes are governed by that same mounted `settings.yml`.
 :::
 
-### SearXNG query parameters CRW sends
+### Backend query parameters CRW sends
 
-For reference (and when debugging a self-hosted SearXNG directly), this is how the public request fields map onto the SearXNG `/search` query parameters CRW emits:
+For reference (and when debugging a self-hosted backend directly), this is how the public request fields map onto the `/search` query parameters CRW emits:
 
-| SearXNG param | Sourced from | Notes |
+| Backend param | Sourced from | Notes |
 |---|---|---|
 | `q` | `query` | Cleaned (leading filler stripped); `pdf` category appends ` filetype:pdf`. |
 | `categories` | `sources` + passthrough `categories` | Comma-joined union, de-duplicated. `web`→`general`, `news`→`news`, `images`→`images`, plus any passthrough value. |
@@ -367,11 +367,11 @@ For reference (and when debugging a self-hosted SearXNG directly), this is how t
 | `time_range` | `tbs` | `qdr:h`/`qdr:d`→`day`, `qdr:w`→`week`, `qdr:m`→`month`, `qdr:y`→`year`. |
 | `format` | — | Always `json` (the sidecar enables the JSON formatter; HTML stays on for debugging). |
 
-`pageno` and `safesearch` are available on the low-level `crw search` CLI but are not exposed on `/v1/search`. Full upstream reference: [SearXNG Search API](https://docs.searxng.org/dev/search_api.html).
+`pageno` and `safesearch` are available on the low-level `crw search` CLI but are not exposed on `/v1/search`.
 
-## Self-hosting the SearXNG sidecar
+## Self-hosting the search sidecar
 
-The default `docker-compose.yml` ships a hardened SearXNG container:
+The default `docker-compose.yml` ships a hardened search container:
 
 - Read-only root filesystem with sized tmpfs scratch
 - All Linux capabilities dropped, `no-new-privileges`
@@ -379,7 +379,7 @@ The default `docker-compose.yml` ships a hardened SearXNG container:
 - Pinned upstream image tag (we never run `:latest`)
 - Config mounted read-only from `config/searxng/settings.yml`
 
-It is mere-aggregation under AGPL — you are running an unmodified upstream SearXNG image with config mounted at runtime, so no §13 corresponding-source obligations attach to the image itself. If you redistribute your CRW deployment publicly, AGPL §13 still requires you to offer the corresponding source of CRW (which is already on GitHub) to your users.
+It is mere-aggregation under AGPL — you are running an unmodified upstream image with config mounted at runtime, so no §13 corresponding-source obligations attach to the image itself. If you redistribute your CRW deployment publicly, AGPL §13 still requires you to offer the corresponding source of CRW (which is already on GitHub) to your users.
 
 ## Common production patterns
 
@@ -392,7 +392,7 @@ It is mere-aggregation under AGPL — you are running an unmodified upstream Sea
 
 - Adding `scrapeOptions` to every search before you know you need page content
 - Confusing `sources` with `categories`
-- Treating `qdr:h` as truly hourly precision; SearXNG collapses it to `day`
+- Treating `qdr:h` as truly hourly precision; the backend collapses it to `day`
 - Sending `plainText` or `json` in `scrapeOptions.formats` — use `/v1/scrape` for those
 
 ## When to use something else

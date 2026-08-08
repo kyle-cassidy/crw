@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>fastCRW search feature — POST /v1/search</title>
-<meta name="description" content="fastCRW web search endpoint via SearXNG (self-hosted) or managed (hosted). Optional per-result scraping. Hosted at api.fastcrw.com; self-host at localhost:3000.">
+<meta name="description" content="fastCRW web search endpoint via a self-hosted search backend or managed (hosted). Optional per-result scraping. Hosted at api.fastcrw.com; self-host at localhost:3000.">
 <link rel="canonical" href="https://docs.fastcrw.com/api-reference/search/">
 <meta http-equiv="refresh" content="0; url=/api-reference/search/">
 </head>
@@ -34,7 +34,7 @@ each result in the same call (saves a round trip per result).</p>
       "url": "https://...",
       "title": "...",
       "snippet": "LLM-ready summary line",
-      "description": "Same as snippet (SearXNG-native name)",
+      "description": "Same as snippet (backend-native name)",
       "position": 1,
       "score": 9.5,
       "category": "general"

@@ -20,7 +20,7 @@ claude mcp add crw -- npx -y crw-mcp
 
 Claude Code writes this into your project `.claude/mcp.json` automatically. You are done. Start a new Claude Code session and the tools are available.
 
-> **What you get:** `crw_scrape`, `crw_crawl`, `crw_check_crawl_status`, `crw_map`, `crw_extract`, `crw_check_extract_status`, `crw_cancel_extract`, `crw_parse_file`. `crw_search` requires a SearXNG backend — use cloud mode to get it instantly.
+> **What you get:** `crw_scrape`, `crw_crawl`, `crw_check_crawl_status`, `crw_map`, `crw_extract`, `crw_check_extract_status`, `crw_cancel_extract`, `crw_parse_file`. `crw_search` requires a search backend — use cloud mode to get it instantly.
 
 ### Option B: Cloud mode (all 9 tools, including `crw_search`)
 
@@ -206,7 +206,7 @@ All 9 tools registered by `crw-mcp`:
 **Key points:**
 
 - `crw_search` advertises a `country` field in its schema but the backend ignores it — use `lang` for language filtering instead. Use `tbs` for time filtering (`qdr:h|qdr:d|qdr:w|qdr:m|qdr:y`).
-- `crw_search` is only available in proxy/cloud mode, or in embedded mode when a SearXNG backend is configured.
+- `crw_search` is only available in proxy/cloud mode, or in embedded mode when a search backend is configured.
 - Crawl status values: `scraping` | `completed` | `failed`.
 - All content fields default to a ~15 000 char limit. Pass `maxLength: 0` to disable truncation.
 
