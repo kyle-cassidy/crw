@@ -221,7 +221,7 @@ Both options expose the same API, so your integration code works with either.
 
 ## Endpoint Support Matrix
 
-Not every integration supports every endpoint. Search requires a cloud API backend or a SearXNG sidecar configured for the embedded MCP server.
+Not every integration supports every endpoint. Search requires a cloud API backend or a search sidecar configured for the embedded MCP server.
 
 | Integration | Scrape | Crawl | Map | Search | Extract |
 |-------------|--------|-------|-----|--------|---------|
@@ -230,12 +230,12 @@ Not every integration supports every endpoint. Search requires a cloud API backe
 | [n8n](https://www.npmjs.com/package/n8n-nodes-crw) | Yes | Yes | Yes | Yes (cloud) | -- |
 | [Dify](https://github.com/us/dify-plugin-crw) | Yes | Yes | Yes | Yes (cloud) | -- |
 | MCP Server (proxy mode) | Yes | Yes | Yes | Yes | -- |
-| MCP Server (embedded, no SearXNG) | Yes | Yes | Yes | -- | -- |
+| MCP Server (embedded, no search backend) | Yes | Yes | Yes | -- | -- |
 | Firecrawl v2 SDK migration | Yes | Yes | Yes | -- | Validate compatibility first |
 | Direct HTTP | Yes | Yes | Yes | Yes (cloud) | Yes |
 
 :::note
-In MCP **proxy mode** (`--api-url` / `CRW_API_URL` set), `crw_search` is always advertised and the remote server handles it. In **embedded mode**, `crw_search` is only available when a SearXNG sidecar is configured.
+In MCP **proxy mode** (`--api-url` / `CRW_API_URL` set), `crw_search` is always advertised and the remote server handles it. In **embedded mode**, `crw_search` is only available when a search sidecar is configured.
 :::
 
 ## All Integrations

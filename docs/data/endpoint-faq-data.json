@@ -86,15 +86,15 @@
       "faqs": [
         {
           "q": "What search backend does /v1/search use?",
-          "a": "Self-hosted CRW boots a bundled SearXNG sidecar via docker compose, so /v1/search works on http://localhost:3000 with no third-party API key. To point at an existing SearXNG instance, set CRW_SEARCH__SEARXNG_URL; to disable search entirely, set [search].enabled = false (the route then returns HTTP 503 with errorCode search_disabled)."
+          "a": "Self-hosted CRW boots a bundled search sidecar via docker compose, so /v1/search works on http://localhost:3000 with no third-party API key. To point at a search backend you already run, set CRW_SEARCH__SEARCH_BACKEND_URL; to disable search entirely, set [search].enabled = false (the route then returns HTTP 503 with errorCode search_disabled)."
         },
         {
           "q": "What fields come back in each search result?",
-          "a": "Each row carries title, url, description, snippet, position, score, and category. snippet is the LLM-ready summary line (Firecrawl-compatible name); the same text is also emitted under the SearXNG-native field so existing clients keep working."
+          "a": "Each row carries title, url, description, snippet, position, score, and category. snippet is the LLM-ready summary line (Firecrawl-compatible name); the same text is also emitted under the backend-native field so existing clients keep working."
         },
         {
           "q": "How are search results ranked?",
-          "a": "Results are returned in SearXNG's aggregated ranking order, with position starting at 1 for the top hit and score reflecting the upstream relevance signal. Use position for stable ordering rather than score, which depends on the upstream engines SearXNG queried."
+          "a": "Results are returned in the search backend's aggregated ranking order, with position starting at 1 for the top hit and score reflecting the upstream relevance signal. Use position for stable ordering rather than score, which depends on the upstream engines the backend queried."
         },
         {
           "q": "Can search fetch the page content for each result in one call?",

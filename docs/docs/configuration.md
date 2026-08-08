@@ -96,11 +96,11 @@ max_concurrency = 4          # bounded fan-out for per-result summaries in /v1/s
 # model = "provider-model-id"
 # base_url = "https://gateway.example.com/v1"  # /responses is appended
 
-# /v1/search endpoint — proxies to a SearXNG instance.
-# Absence of searxng_url disables /v1/search with HTTP 503 (error_code: "search_disabled").
+# /v1/search endpoint — proxies to a self-hosted search backend.
+# Absence of search_backend_url disables /v1/search with HTTP 503 (error_code: "search_disabled").
 # [search]
-# enabled = true               # set false to disable /v1/search even if searxng_url is set
-# searxng_url = "http://localhost:8080"
+# enabled = true               # set false to disable /v1/search even if search_backend_url is set
+# search_backend_url = "http://localhost:8080"
 # timeout_ms = 15000
 # default_limit = 5
 # max_limit = 20

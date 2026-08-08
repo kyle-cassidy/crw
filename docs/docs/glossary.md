@@ -58,9 +58,9 @@ Model Context Protocol is an open standard that lets AI assistants (Claude Code,
 
 ---
 
-## SearXNG
+## search backend
 
-SearXNG is an open-source, self-hostable meta-search engine that aggregates results from multiple search providers without exposing queries to any single third party. fastCRW bundles a SearXNG sidecar in its Docker Compose stack and uses it to power the `POST /v1/search` endpoint. Running `docker compose up` starts SearXNG automatically at `searxng:8080` inside the Compose network — no third-party search API key required. You can point fastCRW at an existing SearXNG instance with `CRW_SEARCH__SEARXNG_URL`, or disable search entirely with `[search].enabled = false`. On the hosted cloud at `fastcrw.com`, SearXNG is managed for you. See [Search](/docs/search) and [Docker](/docs/docker).
+The self-hostable meta-search service that powers the `POST /v1/search` endpoint. It aggregates results from multiple search providers without exposing queries to any single third party, and it runs as one extra container alongside the `crw` binary. fastCRW bundles it as a sidecar in its Docker Compose stack, so `docker compose up` starts it automatically at `searxng:8080` inside the Compose network — no third-party search API key required. You can point fastCRW at a backend you already run with `CRW_SEARCH__SEARCH_BACKEND_URL`, or disable search entirely with `[search].enabled = false`. On the hosted cloud at `fastcrw.com`, it is managed for you. See [Search](/docs/search) and [Docker](/docs/docker).
 
 ---
 

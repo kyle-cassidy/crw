@@ -363,10 +363,10 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
 <tr>
 <td><code>/v1/search</code> or <code>/firecrawl/v2/search</code></td>
 <td><code>&quot;search_disabled&quot;</code></td>
-<td>Search is enabled in config but <code>searxng_url</code> is not configured, or SearXNG is unreachable.</td>
+<td>Search is enabled in config but <code>search_backend_url</code> is not configured, or the backend is unreachable.</td>
 </tr>
 </tbody></table>
-<p><strong>Action for 503:</strong> retry with exponential backoff; this is a transient condition. If it persists beyond a few minutes, check renderer health at <code>/ready</code> or your SearXNG container.</p>
+<p><strong>Action for 503:</strong> retry with exponential backoff; this is a transient condition. If it persists beyond a few minutes, check renderer health at <code>/ready</code> or your search backend container.</p>
 <pre data-lang="ts"><code class="language-ts">if (res.status === 503) {
   // Transient — back off and retry, then alert if it persists.
   await sleep(backoffMs);

@@ -490,26 +490,28 @@ result = scrape_with_retry(&quot;https://example.com&quot;, &quot;crw_live_YOUR_
 <p><strong>Symptom:</strong> <code>POST /v1/search</code> returns HTTP <code>503</code> with <code>error_code: &quot;search_disabled&quot;</code>, or it returns <code>success: true</code> but <code>data.results</code> is an empty array <code>[]</code>.</p>
 <p><strong>Two separate problems:</strong></p>
 <h3 id="6a-error_code-search_disabled-503">6a. <code>error_code: &quot;search_disabled&quot;</code> (503)</h3>
-<p><strong>Cause:</strong> The engine has no SearXNG instance configured. The search route requires <code>[search].searxng_url</code> in config or the <code>CRW_SEARCH__SEARXNG_URL</code> environment variable.</p>
+<p><strong>Cause:</strong> The engine has no search backend configured. The search route requires <code>[search].search_backend_url</code> in config or the <code>CRW_SEARCH__SEARCH_BACKEND_URL</code> environment variable.</p>
 <p><strong>Fix (self-hosted):</strong></p>
-<pre data-lang="toml"><code class="language-toml"># config.toml
+<pre data-lang="bash"><code class="language-bash"># Quickest self-hosted setup — boot the bundled search sidecar
+crw setup --local</code></pre>
+<pre data-lang="toml"><code class="language-toml"># Or point at a backend you already run
+# config.toml
 [search]
-searxng_url = &quot;http://localhost:8080&quot;</code></pre>
+search_backend_url = &quot;http://localhost:8080&quot;</code></pre>
 <pre data-lang="bash"><code class="language-bash"># Or via environment variable
-export CRW_SEARCH__SEARXNG_URL=http://localhost:8080</code></pre>
-<pre data-lang="bash"><code class="language-bash"># Quickest self-hosted setup — use the bundled docker-compose
-docker compose up -d
-# The bundled docker-compose.yml already wires CRW to the searxng sidecar</code></pre>
+export CRW_SEARCH__SEARCH_BACKEND_URL=http://localhost:8080</code></pre>
+<pre data-lang="bash"><code class="language-bash"># The bundled docker-compose.yml already wires CRW to the search sidecar
+docker compose up -d</code></pre>
 <p><strong>fastcrw.com cloud:</strong> <code>search_disabled</code> never occurs on the managed SaaS tier. <code>crw_search</code> is always available.</p>
 <h3 id="6b-empty-results-array-no-error">6b. Empty results array (no error)</h3>
-<p><strong>Cause:</strong> SearXNG returned zero results — usually because no search engines are enabled in the SearXNG instance, the instance is rate-limited by upstream search providers, or the query matched no results.</p>
+<p><strong>Cause:</strong> The search backend returned zero results — usually because no search engines are enabled on it, the instance is rate-limited by upstream search providers, or the query matched no results.</p>
 <p><strong>Diagnosis:</strong></p>
-<pre data-lang="bash"><code class="language-bash"># Hit the SearXNG UI directly to check it is working
+<pre data-lang="bash"><code class="language-bash"># Hit the backend directly to check it is working
 curl &quot;http://localhost:8080/?q=test+query&amp;format=json&quot; | jq '.results | length'
 
-# Check which engines SearXNG has enabled
+# Check which engines the backend has enabled
 curl &quot;http://localhost:8080/config&quot; | jq '.engines[] | select(.enabled == true) | .name'</code></pre>
-<p><strong>Fix:</strong> Enable engines in the SearXNG <code>settings.yml</code>, or use the bundled Docker image which comes pre-configured.</p>
+<p><strong>Fix:</strong> Enable engines in the backend&#39;s <code>settings.yml</code>, or use the bundled Docker image which comes pre-configured.</p>
 <hr>
 <h2 id="7-mcp-server-not-appearing-in-ai-client">7. MCP server not appearing in AI client</h2>
 <p><strong>Symptom:</strong> After adding the MCP config, the tool list in Claude Code / Claude Desktop / Cursor / Windsurf does not show <code>crw_scrape</code>, <code>crw_crawl</code>, or the other CRW tools.</p>
@@ -554,10 +556,10 @@ curl &quot;http://localhost:8080/config&quot; | jq '.engines[] | select(.enabled
 </tr>
 </tbody></table>
 <h3 id="7d-crw_search-is-missing-but-other-tools-appear-embedded-mode">7d. <code>crw_search</code> is missing but other tools appear (embedded mode)</h3>
-<p><code>crw_search</code> is only advertised when a SearXNG backend is configured. In embedded mode with no SearXNG, the tool is intentionally hidden. To get <code>crw_search</code>, either:</p>
+<p><code>crw_search</code> is only advertised when a search backend is configured. In embedded mode with no backend, the tool is intentionally hidden. To get <code>crw_search</code>, either:</p>
 <ul>
 <li>Switch to fastcrw.com cloud mode (<code>CRW_API_URL</code> + <code>CRW_API_KEY</code>), or</li>
-<li>Run a local SearXNG and set <code>CRW_SEARCH__SEARXNG_URL</code>.</li>
+<li>Run <code>crw setup --local</code> to boot a local backend, or set <code>CRW_SEARCH__SEARCH_BACKEND_URL</code> to one you already run.</li>
 </ul>
 <h3 id="7e-diagnosing-with-the-json-rpc-wire">7e. Diagnosing with the JSON-RPC wire</h3>
 <p>The MCP server communicates over stdio JSON-RPC. You can test it directly:</p>
@@ -652,7 +654,7 @@ if data[&quot;balance&quot;] &lt; 100:
 <tr>
 <td><code>search_disabled</code></td>
 <td>503</td>
-<td><code>/v1/search</code> called with no SearXNG configured</td>
+<td><code>/v1/search</code> called with no search backend configured</td>
 </tr>
 <tr>
 <td><code>not_found</code></td>

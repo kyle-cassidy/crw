@@ -493,7 +493,7 @@ console.log(data.markdown);</code></pre>
 </tbody></table>
 <p>Both options expose the same API, so your integration code works with either.</p>
 <h2 id="endpoint-support-matrix">Endpoint Support Matrix</h2>
-<p>Not every integration supports every endpoint. Search requires a cloud API backend or a SearXNG sidecar configured for the embedded MCP server.</p>
+<p>Not every integration supports every endpoint. Search requires a cloud API backend or a search sidecar configured for the embedded MCP server.</p>
 <table>
 <thead>
 <tr>
@@ -546,7 +546,7 @@ console.log(data.markdown);</code></pre>
 <td>--</td>
 </tr>
 <tr>
-<td>MCP Server (embedded, no SearXNG)</td>
+<td>MCP Server (embedded, no search backend)</td>
 <td>Yes</td>
 <td>Yes</td>
 <td>Yes</td>
@@ -570,7 +570,7 @@ console.log(data.markdown);</code></pre>
 <td>Yes</td>
 </tr>
 </tbody></table>
-<div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">In MCP **proxy mode** (`--api-url` / `CRW_API_URL` set), `crw_search` is always advertised and the remote server handles it. In **embedded mode**, `crw_search` is only available when a SearXNG sidecar is configured.</div></div><h2 id="all-integrations">All Integrations</h2>
+<div class="callout callout-note"><div class="callout-icon"></div><div class="callout-content">In MCP **proxy mode** (`--api-url` / `CRW_API_URL` set), `crw_search` is always advertised and the remote server handles it. In **embedded mode**, `crw_search` is only available when a search sidecar is configured.</div></div><h2 id="all-integrations">All Integrations</h2>
 <table>
 <thead>
 <tr>

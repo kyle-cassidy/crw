@@ -372,7 +372,7 @@ cors_allowed_origins = [&quot;https://app.example.com&quot;]</code></pre>
 <h3 id="rotating-searxng_secret_key-and-browserless_token">Rotating <code>SEARXNG_SECRET_KEY</code> and <code>BROWSERLESS_TOKEN</code></h3>
 <p>Both variables ship with <strong>publicly-known placeholder defaults</strong> in the repository. These defaults are intentional for local dev but must be replaced before any internet-facing or shared deployment.</p>
 <p><strong><code>SEARXNG_SECRET_KEY</code></strong> (<code>docker-compose.yml</code> line: <code>${SEARXNG_SECRET_KEY:-change-me-with-openssl-rand-hex-32-please}</code>):
-SearXNG uses this key to sign session cookies. Anyone who knows the default value can forge cookies against your SearXNG instance. Generate a real key and inject it:</p>
+The search backend uses this key to sign session cookies. Anyone who knows the default value can forge cookies against your instance. Generate a real key and inject it:</p>
 <pre data-lang="bash"><code class="language-bash">echo &quot;SEARXNG_SECRET_KEY=$(openssl rand -hex 32)&quot; &gt;&gt; .env</code></pre>
 <p><strong><code>BROWSERLESS_TOKEN</code></strong> (<code>docker-compose.yml</code> and <code>docker-compose.stealth.yml</code>: <code>${BROWSERLESS_TOKEN:-crwtest}</code>):
 Browserless v2 requires this token in every CDP WebSocket URL (<code>?token=...</code>). The default <code>crwtest</code> is public. Without a real token, any process that can reach the browserless port can open Chrome sessions against your host. Generate and inject:</p>

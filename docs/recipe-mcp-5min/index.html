@@ -292,7 +292,7 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
 <pre data-lang="bash"><code class="language-bash">claude mcp add crw -- npx -y crw-mcp</code></pre>
 <p>Claude Code writes this into your project <code>.claude/mcp.json</code> automatically. You are done. Start a new Claude Code session and the tools are available.</p>
 <blockquote>
-<p><strong>What you get:</strong> <code>crw_scrape</code>, <code>crw_crawl</code>, <code>crw_check_crawl_status</code>, <code>crw_map</code>, <code>crw_extract</code>, <code>crw_check_extract_status</code>, <code>crw_cancel_extract</code>, <code>crw_parse_file</code>. <code>crw_search</code> requires a SearXNG backend — use cloud mode to get it instantly.</p>
+<p><strong>What you get:</strong> <code>crw_scrape</code>, <code>crw_crawl</code>, <code>crw_check_crawl_status</code>, <code>crw_map</code>, <code>crw_extract</code>, <code>crw_check_extract_status</code>, <code>crw_cancel_extract</code>, <code>crw_parse_file</code>. <code>crw_search</code> requires a search backend — use cloud mode to get it instantly.</p>
 </blockquote>
 <h3 id="option-b-cloud-mode-all-9-tools-including-crw_search">Option B: Cloud mode (all 9 tools, including <code>crw_search</code>)</h3>
 <p>Get a free API key at <a href="https://fastcrw.com">fastcrw.com</a> — 500 one-time lifetime credits, no monthly reset.</p>
@@ -433,7 +433,7 @@ All 9 tools registered by `crw-mcp`:
 **Key points:**
 
 - `crw_search` advertises a `country` field in its schema but the backend ignores it — use `lang` for language filtering instead. Use `tbs` for time filtering (`qdr:h|qdr:d|qdr:w|qdr:m|qdr:y`).
-- `crw_search` is only available in proxy/cloud mode, or in embedded mode when a SearXNG backend is configured.
+- `crw_search` is only available in proxy/cloud mode, or in embedded mode when a search backend is configured.
 - Crawl status values: `scraping` | `completed` | `failed`.
 - All content fields default to a ~15 000 char limit. Pass `maxLength: 0` to disable truncation.
 

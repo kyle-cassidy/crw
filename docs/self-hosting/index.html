@@ -294,7 +294,7 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
 <h2 id="what-you-get">What You Get</h2>
 <ul>
 <li>the same core self-hosted routes: <code>scrape</code>, <code>crawl</code>, <code>map</code>, <code>mcp</code>, <code>health</code></li>
-<li><code>search</code> too, when you run the Docker stack — it boots a SearXNG sidecar so <code>/v1/search</code> and the <code>crw_search</code> MCP tool work out of the box (see <a href="/docker">Docker → Search (SearXNG)</a>)</li>
+<li><code>search</code> too, when you run the Docker stack — it boots a search sidecar so <code>/v1/search</code> and the <code>crw_search</code> MCP tool work out of the box (see <a href="/docker">Docker → Search backend</a>)</li>
 <li>optional auth with Bearer tokens</li>
 <li>optional browser-backed rendering</li>
 <li>your own reverse proxy, logging, rate limits, and deployment choices</li>
@@ -324,8 +324,8 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
 </tr>
 <tr>
 <td><strong>Search (<code>/v1/search</code>) included</strong></td>
-<td>No — <code>searxng_url</code> not set; returns <code>search_disabled</code> until you point it at your own SearXNG</td>
-<td>Yes — SearXNG sidecar auto-started; <code>/v1/search</code> and <code>crw_search</code> MCP tool work out of the box</td>
+<td>No — <code>search_backend_url</code> not set; returns <code>search_disabled</code> until you point it at a backend you run</td>
+<td>Yes — search sidecar auto-started; <code>/v1/search</code> and <code>crw_search</code> MCP tool work out of the box</td>
 <td>Yes — same as <code>config.docker</code></td>
 </tr>
 <tr>
