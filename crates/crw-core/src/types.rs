@@ -1653,6 +1653,11 @@ pub struct SearchRequest {
     /// recall (e.g. 1 vs 3) at a fixed answer temperature.
     #[serde(default, alias = "query_expand_variants")]
     pub query_expand_variants: Option<usize>,
+    /// Per-request override for `[search].query_expand` — turns multi-query
+    /// expansion on/off for this request. None uses the server config. Used by
+    /// the eval harness to A/B expansion against prod without a global flip.
+    #[serde(default, alias = "query_expand")]
+    pub query_expand: Option<bool>,
     /// Per-request override for `[search].multi_round` — the adaptive
     /// evidence-scout round that fires when the round-1 answer abstains. None
     /// uses the server config. The eval harness sets this to A/B the lever.
