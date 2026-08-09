@@ -390,7 +390,11 @@ fn has_recovery_tier(
         || http_fallback_proxy_ready
 }
 
-/// May a browser render plausibly reveal more than this response body did?
+/// Is this response an HTML document, or an unknown type we must assume is one?
+///
+/// Two callers, one question. A browser render can only add to an HTML document,
+/// and the HTML structural heuristics in `antibot::classify` are only meaningful
+/// on one (`crw_crawl::single::classify_block`).
 ///
 /// The HTTP tier decodes every non-PDF response as HTML regardless of its
 /// declared type, so an empty `application/json` / `text/plain` / `image/*` /
@@ -399,7 +403,7 @@ fn has_recovery_tier(
 /// nothing but latency. Absent or unrecognised types stay eligible: a server
 /// that omits `Content-Type` on a bot-wall shell is exactly the case worth
 /// escalating.
-fn content_type_allows_js_escalation(content_type: Option<&str>) -> bool {
+pub fn is_html_like_content_type(content_type: Option<&str>) -> bool {
     match content_type {
         None => true,
         Some(ct) => {
@@ -471,7 +475,17 @@ fn is_origin_navigation_failure(e: &CrwError) -> bool {
         // carry different messages and keep their own error.
         CrwError::RendererError(msg) => {
             let m = msg.to_ascii_lowercase();
-            m.contains("navigation failed") || m.contains("net::err_")
+            m.contains("navigation failed")
+                || m.contains("net::err_")
+                // "we could not confirm where this origin points" — the CDP
+                // destination re-check collapses NXDOMAIN and a resolver
+                // brown-out into one `Unresolved`. Same reasoning as the
+                // `Timeout` arm below: absence of evidence, not evidence
+                // against the HTTP tier's independent finding. Without this a
+                // dead host exits as 500 `renderer_error` ("the page could not
+                // be rendered") instead of 422 `target_unreachable`, which was
+                // 10,107 requests over 14 days in prod.
+                || m.contains("outbound destination check unavailable")
         }
         // A JS-tier timeout does not refute the HTTP tier's positive finding. Both
         // callers only consult this when the HTTP error was already
@@ -1833,7 +1847,7 @@ impl FallbackRenderer {
                 let is_empty_2xx = is_2xx
                     && !is_hard_pinned
                     && !matches!(result.status_code, 204..=206)
-                    && content_type_allows_js_escalation(result.content_type.as_deref())
+                    && is_html_like_content_type(result.content_type.as_deref())
                     && result.html.trim().is_empty();
 
                 if !self.js_renderers.is_empty()
@@ -3576,10 +3590,7 @@ mod tests {
             Some("text/html"),
             Some("application/xhtml+xml"),
         ] {
-            assert!(
-                content_type_allows_js_escalation(ct),
-                "{ct:?} should stay eligible"
-            );
+            assert!(is_html_like_content_type(ct), "{ct:?} should stay eligible");
         }
         for ct in [
             "application/json",
@@ -3589,7 +3600,7 @@ mod tests {
             "text/csv",
         ] {
             assert!(
-                !content_type_allows_js_escalation(Some(ct)),
+                !is_html_like_content_type(Some(ct)),
                 "{ct} cannot be improved by a browser"
             );
         }
