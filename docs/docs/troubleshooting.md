@@ -14,7 +14,7 @@ Before diving into individual patterns:
 
 1. Check `success` in the response body — `false` means a hard failure.
 2. Check `error_code` (snake_case string) for the machine-readable cause.
-3. Check `data.warnings[]` when `success: true` — soft issues like truncation, unsupported formats, and renderer fallbacks surface there. Anti-bot blocks are **not** in `data.warnings[]`; they always return `success: false` + `error_code: "anti_bot"` (see pattern 2).
+3. Check `data.warnings[]` when `success: true` — soft issues like truncation, unsupported formats, and renderer fallbacks surface there. Anti-bot blocks are **not** in `data.warnings[]`; they always return `success: false` + `error_code: "anti_bot"` (see pattern 2). A page the origin answered with a `>= 400` status returns `success: false` + `error_code: "http_error"`, with the error page still in `data`.
 4. Check `metadata.statusCode` — this is the **target site's** HTTP status, not fastCRW's.
 5. Check the fastCRW HTTP status separately — `401`/`422`/`429` all mean different things.
 
@@ -65,9 +65,9 @@ print(result["markdown"][:300])
 
 **Cause:** The target site fingerprints the request as non-browser traffic. Common triggers: missing `User-Agent`, no `Sec-Fetch-*` headers, a datacenter IP, or a detectable headless browser.
 
-> **Not a block: `"No usable content could be extracted (...)"`.** The same
-> `error_code: "anti_bot"` also covers the case where we fetched the page fine
-> but it held nothing usable — a handful of visible characters, no content
+> **Not a block: `"No usable content could be extracted (...)"`.** That case has
+> its own code, `error_code: "no_usable_content"` — we fetched the page fine but
+> it held nothing usable: a handful of visible characters, no content
 > elements. That is usually a broken TLS certificate serving an error stub, a
 > parked domain, or a JS shell that never hydrated. The staged anti-bot fixes
 > below will not help it. Check the URL in a browser first; if it renders a real
@@ -411,7 +411,8 @@ if data["balance"] < 100:
 | `invalid_url` | — | Reserved — not emitted in practice; invalid URLs are returned as `invalid_request` (HTTP 400) by all server routes |
 | `target_unreachable` | 422 | DNS failure, connection refused, host down |
 | `extraction_error` | 422 | LLM extraction failed or CSS/XPath selector invalid |
-| `http_error` | 502 | Network-level error reaching the target |
+| `http_error` | 502, or 200 with `success: false` | The origin answered with a `>= 400` status and what came back is its error page. The body is kept in `data` so you can read the error page and `metadata.statusCode`. A large page served under an error status is still returned as a success — some sites answer 403/404 while serving the real content |
+| `no_usable_content` | 200 with `success: false` | The fetch worked, the page held nothing extractable (parked domain, un-hydrated JS shell, error stub). Not an anti-bot block |
 | `timeout` | 504 | Engine or upstream search timed out |
 | `rate_limited` | 429 | RPM rate limit (engine-level) |
 | `search_disabled` | 503 | `/v1/search` called with no search backend configured |
@@ -420,4 +421,4 @@ if data["balance"] < 100:
 | `renderer_error` | 500 | CDP browser internal error |
 | `internal_error` | 500 | Unexpected engine failure |
 
-Source: `crw-core/src/error.rs` (`error_code()` method), `crw-server/src/error.rs` (HTTP status mapping), and `crw-server/src/routes/scrape.rs` (anti-bot detection + `anti_bot` code).
+Source: `crw-core/src/error.rs` (`error_code()` method), `crw-server/src/error.rs` (HTTP status mapping), and `crw-server/src/routes/scrape.rs` (the `http_error` / `no_usable_content` / `anti_bot` split).
