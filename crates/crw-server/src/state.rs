@@ -445,6 +445,7 @@ impl AppState {
             status: CrawlStatus::InProgress,
             total: 0,
             completed: 0,
+            blocked: 0,
             data: vec![],
             error: None,
         };
@@ -476,6 +477,7 @@ impl AppState {
         let deadline_ms_per_page = self.config.effective_deadline_ms(None, req.wait_for);
         let per_host_max_concurrent = self.config.crawler.per_host_max_concurrent;
         let normalize_tables = self.config.extraction.normalize_tables;
+        let http_retry_threshold_bytes = self.config.extraction.http_retry_threshold_bytes;
 
         let handle = tokio::spawn(async move {
             let _permit = match crawl_semaphore.acquire().await {
@@ -487,6 +489,7 @@ impl AppState {
                         status: CrawlStatus::Failed,
                         total: 0,
                         completed: 0,
+                        blocked: 0,
                         data: vec![],
                         error: Some("Server is overloaded, try again later".into()),
                     });
@@ -514,6 +517,7 @@ impl AppState {
                         deadline_ms_per_page,
                         per_host_max_concurrent,
                         normalize_tables,
+                        http_retry_threshold_bytes,
                     })
                     .await;
                 })
@@ -549,6 +553,7 @@ impl AppState {
             status: CrawlStatus::InProgress,
             total,
             completed: 0,
+            blocked: 0,
             data: vec![],
             error: None,
         });
@@ -588,6 +593,7 @@ impl AppState {
                         status: CrawlStatus::Failed,
                         total,
                         completed: 0,
+                        blocked: 0,
                         data: vec![],
                         error: Some("Server is overloaded, try again later".into()),
                     });
@@ -602,6 +608,7 @@ impl AppState {
                     status: CrawlStatus::Completed,
                     total: 0,
                     completed: 0,
+                    blocked: 0,
                     data: vec![],
                     error: None,
                 });
@@ -669,7 +676,31 @@ impl AppState {
                                 // copying on large batches). A failed scrape still
                                 // advances `completed`.
                                 tx.send_modify(|st| {
-                                    if let Some(d) = scraped {
+                                    if let Some(mut d) = scraped {
+                                        // `scrape_url` stamps the verdict but this
+                                        // path used to push it through untouched,
+                                        // so a wall shipped as an ordinary batch
+                                        // document (and `/v2`'s adapter drops
+                                        // `block`, hiding it completely). Clear the
+                                        // shell and count it, exactly as the single
+                                        // scrape route does.
+                                        let is_wall = d.block.is_some();
+                                        if !is_wall && let Some(reason) = d.http_error() {
+                                            d.block = Some(crw_core::types::BlockOutcome {
+                                                vendor: crw_core::types::HTTP_ERROR_VENDOR
+                                                    .to_string(),
+                                                reason,
+                                            });
+                                        }
+                                        if d.block.is_some() {
+                                            // Same split as `/v1/scrape` and the crawl
+                                            // loop: a wall loses its shell, an origin
+                                            // error page stays readable.
+                                            if is_wall {
+                                                d.clear_body();
+                                            }
+                                            st.blocked += 1;
+                                        }
                                         st.data.push(d);
                                     }
                                     st.completed += 1;
@@ -818,6 +849,32 @@ impl AppState {
                         )
                         .await
                         {
+                            // A wall or an origin error page is not a completed
+                            // extraction: it used to be marked Completed, charged,
+                            // and to have burned the LLM call on the wall's text.
+                            Ok(d) if d.block.is_some() || d.http_error().is_some() => {
+                                let msg = d
+                                    .block
+                                    .as_ref()
+                                    .map(|b| b.message())
+                                    .or_else(|| d.http_error())
+                                    .unwrap_or_else(|| "Blocked".into());
+                                (
+                                    UrlResult {
+                                        url: entry.url,
+                                        status: ExtractStatus::Failed,
+                                        data: None,
+                                        error: Some(msg),
+                                        llm_usage: None,
+                                        basis: None,
+                                        basis_warnings: Vec::new(),
+                                        llm_input_hash: None,
+                                    },
+                                    None,
+                                    0,
+                                    0,
+                                )
+                            }
                             Ok(d) => {
                                 let merged_fields = match &d.json {
                                     Some(serde_json::Value::Object(obj)) => Some(obj.clone()),
