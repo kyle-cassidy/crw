@@ -295,7 +295,7 @@ crw search "renewable energy trends 2024" --json --fields title,url,snippet --li
 <ol>
 <li>Check <code>success</code> in the response body — <code>false</code> means a hard failure.</li>
 <li>Check <code>error_code</code> (snake_case string) for the machine-readable cause.</li>
-<li>Check <code>data.warnings[]</code> when <code>success: true</code> — soft issues like truncation, unsupported formats, and renderer fallbacks surface there. Anti-bot blocks are <strong>not</strong> in <code>data.warnings[]</code>; they always return <code>success: false</code> + <code>error_code: &quot;anti_bot&quot;</code> (see pattern 2).</li>
+<li>Check <code>data.warnings[]</code> when <code>success: true</code> — soft issues like truncation, unsupported formats, and renderer fallbacks surface there. Anti-bot blocks are <strong>not</strong> in <code>data.warnings[]</code>; they always return <code>success: false</code> + <code>error_code: &quot;anti_bot&quot;</code> (see pattern 2). A page the origin answered with a <code>&gt;= 400</code> status returns <code>success: false</code> + <code>error_code: &quot;http_error&quot;</code>, with the error page still in <code>data</code>.</li>
 <li>Check <code>metadata.statusCode</code> — this is the <strong>target site&#39;s</strong> HTTP status, not fastCRW&#39;s.</li>
 <li>Check the fastCRW HTTP status separately — <code>401</code>/<code>422</code>/<code>429</code> all mean different things.</li>
 </ol>
@@ -330,9 +330,9 @@ print(result[&quot;markdown&quot;][:300])</code></pre>
 <p><strong>Symptom:</strong> Response contains <code>success: false</code>, <code>error_code: &quot;anti_bot&quot;</code>, and the error message names the protection class (e.g., <code>&quot;Blocked by anti-bot (cloudflare): ...&quot;</code> or <code>&quot;Blocked by anti-bot (datadome): ...&quot;</code>).</p>
 <p><strong>Cause:</strong> The target site fingerprints the request as non-browser traffic. Common triggers: missing <code>User-Agent</code>, no <code>Sec-Fetch-*</code> headers, a datacenter IP, or a detectable headless browser.</p>
 <blockquote>
-<p><strong>Not a block: <code>&quot;No usable content could be extracted (...)&quot;</code>.</strong> The same
-<code>error_code: &quot;anti_bot&quot;</code> also covers the case where we fetched the page fine
-but it held nothing usable — a handful of visible characters, no content
+<p><strong>Not a block: <code>&quot;No usable content could be extracted (...)&quot;</code>.</strong> That case has
+its own code, <code>error_code: &quot;no_usable_content&quot;</code> — we fetched the page fine but
+it held nothing usable: a handful of visible characters, no content
 elements. That is usually a broken TLS certificate serving an error stub, a
 parked domain, or a JS shell that never hydrated. The staged anti-bot fixes
 below will not help it. Check the URL in a browser first; if it renders a real
@@ -638,8 +638,13 @@ if data[&quot;balance&quot;] &lt; 100:
 </tr>
 <tr>
 <td><code>http_error</code></td>
-<td>502</td>
-<td>Network-level error reaching the target</td>
+<td>502, or 200 with <code>success: false</code></td>
+<td>The origin answered with a <code>&gt;= 400</code> status and what came back is its error page. The body is kept in <code>data</code> so you can read the error page and <code>metadata.statusCode</code>. A large page served under an error status is still returned as a success — some sites answer 403/404 while serving the real content</td>
+</tr>
+<tr>
+<td><code>no_usable_content</code></td>
+<td>200 with <code>success: false</code></td>
+<td>The fetch worked, the page held nothing extractable (parked domain, un-hydrated JS shell, error stub). Not an anti-bot block</td>
 </tr>
 <tr>
 <td><code>timeout</code></td>
@@ -677,7 +682,7 @@ if data[&quot;balance&quot;] &lt; 100:
 <td>Unexpected engine failure</td>
 </tr>
 </tbody></table>
-<p>Source: <code>crw-core/src/error.rs</code> (<code>error_code()</code> method), <code>crw-server/src/error.rs</code> (HTTP status mapping), and <code>crw-server/src/routes/scrape.rs</code> (anti-bot detection + <code>anti_bot</code> code).</p>
+<p>Source: <code>crw-core/src/error.rs</code> (<code>error_code()</code> method), <code>crw-server/src/error.rs</code> (HTTP status mapping), and <code>crw-server/src/routes/scrape.rs</code> (the <code>http_error</code> / <code>no_usable_content</code> / <code>anti_bot</code> split).</p>
 </article>
     </main>
 
