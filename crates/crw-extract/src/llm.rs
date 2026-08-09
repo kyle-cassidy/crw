@@ -226,8 +226,15 @@ pub async fn scout_followups(
          evidence, quoted, plus the specific thing asked (the predicate, the date, \
          the number). ALWAYS keep any place name, city, region, or country from \
          the question VERBATIM in every query — a location is never optional. \
-         (3) Try a different angle than the original phrasing — an exact-phrase \
-         query, an authoritative source guess, or the canonical entity. (4) Do NOT \
+         (3) If the question uses an ordinal or positional reference (\"16th \
+         edition\", \"Nth annual\", \"3rd president\", \"the Nth winner\") and the \
+         evidence EXPLICITLY ties that reference to a concrete year, name, or \
+         entity, use that concrete value in a query. Resolve ONLY from what the \
+         evidence supports, never guess. Do NOT resolve open-ended temporal \
+         references (\"current\", \"latest\", \"most recent\"), and never alter a \
+         place name. \
+         (4) Try a different angle than the original phrasing — an exact-phrase \
+         query, an authoritative source guess, or the canonical entity. (5) Do NOT \
          repeat the user's original wording. Output ONLY the queries, ONE per \
          line: no quotes around the whole line, no numbering, no labels. Output at \
          most {n} line(s)."

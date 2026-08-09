@@ -314,13 +314,18 @@ pub async fn search_inner(
         .query_expand_variants
         .unwrap_or(state.config.search.query_expand_variants)
         .clamp(1, MAX_QUERY_EXPAND_VARIANTS);
+    // Per-request override for query expansion (eval A/B harness), same shape as
+    // the multi_round override; None uses the server config. Lets the benchmark
+    // A/B expansion against prod via a request param without a global config flip
+    // (so real customers are not switched onto the path during a measurement).
+    let want_expand = req.query_expand.unwrap_or(state.config.search.query_expand);
     // Phase C1: when expansion + scrapeOptions are both in play, overlap the
     // scrape of the original-query results with the expansion (LLM rewrite +
     // variant fetches) instead of doing them serially. The final pool is the
     // identical union, so the reranked source set is unchanged — only the
     // ~5-10s expansion overhead is hidden behind the original scrape.
     let c1_overlap = state.config.search.pipeline_overlap
-        && state.config.search.query_expand
+        && want_expand
         && llm_path
         && req.scrape_options.is_some()
         && effective_llm.is_some();
@@ -352,7 +357,7 @@ pub async fn search_inner(
         let mut merged = orig;
         union_pools(&mut merged, variant_pools);
         merged
-    } else if state.config.search.query_expand
+    } else if want_expand
         && llm_path
         && let Some(llm) = effective_llm
     {
@@ -684,9 +689,23 @@ pub async fn search_inner(
                                 .await;
                                 let mut grew = false;
                                 for sq in scout_qs {
+                                    // Bound every scout op by the request deadline.
+                                    // `multi_budget_ok` only gates ENTRY; once inside,
+                                    // a slow SearXNG fetch or a hung scrape could run
+                                    // far past the caller's budget (a scout scrape was
+                                    // observed hanging ~6 min → 502). Out of budget:
+                                    // stop and keep round-1.
+                                    if req_deadline.remaining().is_zero() {
+                                        break;
+                                    }
                                     let mut sp = params.clone();
                                     sp.q = sq;
-                                    if let Ok(resp2) = client.fetch(&sp).await {
+                                    if let Ok(Ok(resp2)) = tokio::time::timeout(
+                                        req_deadline.remaining(),
+                                        client.fetch(&sp),
+                                    )
+                                    .await
+                                    {
                                         let extra = transform_flat_reranked(
                                             &resp2,
                                             &req.query,
@@ -705,13 +724,21 @@ pub async fn search_inner(
                                             continue;
                                         }
                                         let mut sd = SearchData::Flat(fresh);
-                                        let _ = enrich_with_scrape(&mut sd, opts, state).await;
+                                        let _ = tokio::time::timeout(
+                                            req_deadline.remaining(),
+                                            enrich_with_scrape(&mut sd, opts, state),
+                                        )
+                                        .await;
                                         if let SearchData::Flat(rows) = sd {
                                             grew |= merge_scraped(&mut data, rows);
                                         }
                                     }
                                 }
+                                // Skip the round-2 re-synthesis if the scout work
+                                // already consumed the deadline, so the extra LLM
+                                // call can't run (and bill) past the caller's budget.
                                 if grew
+                                    && !req_deadline.remaining().is_zero()
                                     && let Ok((ans2, cites2, usage2, mut warns2)) =
                                         synthesize_answer(
                                             &req,
@@ -1642,6 +1669,7 @@ mod tests {
             answer_temperature: None,
             query_expand_variants: None,
             multi_round: None,
+            query_expand: None,
             answer_list_format: None,
             max_content_chars: None,
         }
