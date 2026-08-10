@@ -24,6 +24,15 @@ const MAX_RESPONSE_BYTES: usize = 10 * 1024 * 1024;
 /// with multi-megabyte error pages.
 const MAX_ERROR_BODY_BYTES: usize = 64 * 1024;
 
+/// Signals to the search backend that this request may use a metered rescue
+/// tier if the free legs come back empty. Sent ONLY when
+/// [`SearxngParams::paid_rescue`] is set, which only crw-saas can cause.
+///
+/// Positive opt-in on purpose. The inverse design — "spend unless told not to"
+/// — cannot fail closed: a caller that forgets the header, or a self-host
+/// pointing at a backend that honours it, would silently start spending.
+pub const PAID_RESCUE_HEADER: &str = "X-Crw-Paid-Rescue";
+
 async fn read_capped(response: reqwest::Response, cap: usize) -> Result<Vec<u8>, SearchError> {
     if let Some(declared) = response.content_length()
         && declared as usize > cap
@@ -201,22 +210,26 @@ impl SearxngClient {
             }
         }
 
-        let response = self
-            .http
-            .get(url)
-            .timeout(self.timeout)
-            .send()
-            .await
-            .map_err(|e: reqwest::Error| {
-                if e.is_timeout() {
-                    SearchError::Timeout
-                } else {
-                    // `without_url()` strips reqwest's embedded request URL from
-                    // the Display string — that URL can carry credentials/tokens
-                    // (issue #90). The route layer re-attaches a sanitized origin.
-                    SearchError::Transport(e.without_url().to_string())
-                }
-            })?;
+        // A HEADER, not a query parameter: the entitlement belongs to the
+        // caller, not to the query, so it must not widen the search surface nor
+        // enter the backend's cache key (two callers asking the same thing must
+        // still share one cached answer). Absent header = today's exact request,
+        // byte for byte, which is what keeps self-host and every non-SaaS caller
+        // unchanged.
+        let mut req = self.http.get(url).timeout(self.timeout);
+        if params.paid_rescue {
+            req = req.header(PAID_RESCUE_HEADER, "1");
+        }
+        let response = req.send().await.map_err(|e: reqwest::Error| {
+            if e.is_timeout() {
+                SearchError::Timeout
+            } else {
+                // `without_url()` strips reqwest's embedded request URL from
+                // the Display string — that URL can carry credentials/tokens
+                // (issue #90). The route layer re-attaches a sanitized origin.
+                SearchError::Transport(e.without_url().to_string())
+            }
+        })?;
 
         let status = response.status();
         if !status.is_success() {

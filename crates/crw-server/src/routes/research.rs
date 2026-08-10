@@ -72,6 +72,12 @@ async fn searxng_papers(
         engines,
         pageno: None,
         safesearch: None,
+        // Never on the research legs. They already fan out across arxiv,
+        // crossref, OpenAlex and Semantic Scholar, so a thin web pool here is
+        // not a dead end — and this leg REPLACES the pool it merges (every row
+        // is filtered through `PaperHit::from_searxng`), so a general-web
+        // rescue could shrink a scholarly result set while spending money.
+        paid_rescue: false,
     };
     let Ok(resp) = client.fetch(&params).await else {
         return Vec::new();
@@ -279,6 +285,8 @@ pub async fn github(
         engines: join_nonempty(&state.config.search.github_engines),
         pageno: None,
         safesearch: None,
+        // Curated-engine leg; a paid general-web tier cannot honour it.
+        paid_rescue: false,
     };
     let resp = client
         .fetch(&params)

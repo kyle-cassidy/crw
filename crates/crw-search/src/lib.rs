@@ -19,7 +19,7 @@ pub mod structured;
 pub mod transform;
 pub mod wikidata;
 
-pub use client::{SearchError, SearxngClient, SearxngResponse, SearxngResult};
+pub use client::{PAID_RESCUE_HEADER, SearchError, SearxngClient, SearxngResponse, SearxngResult};
 pub use params::{SearxngParams, clean_query, map_to_searxng_params};
 pub use rerank::{rerank, rerank_relevance};
 pub use structured::{StructuredFact, structured_facts};

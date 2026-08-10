@@ -1869,6 +1869,17 @@ pub struct SearchRequest {
     /// caps the answer-synthesis path, not the per-result summary path.
     #[serde(default, alias = "max_content_chars")]
     pub max_content_chars: Option<usize>,
+    /// Entitlement to the search backend's PAID rescue tier when the free legs
+    /// return nothing. NOT part of the public request body: `serde(skip)` means
+    /// a caller cannot set it by sending the field, and we never serialize it
+    /// onward. It is populated server-side from a trusted header
+    /// (`X-Crw-Paid-Rescue`) that only crw-saas may send, because only crw-saas
+    /// can see the plan and role that decide whether the request may spend.
+    ///
+    /// Defaults to false, so a self-host deployment, the CLI, MCP and every
+    /// internally-constructed request behave exactly as before.
+    #[serde(skip)]
+    pub paid_rescue: bool,
 }
 
 /// A single search result (web or news). Mirrors `SearchResult` in

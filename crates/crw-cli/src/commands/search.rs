@@ -111,6 +111,8 @@ pub async fn run(args: SearchArgs) {
         engines: None,
         pageno: None,
         safesearch: args.safesearch,
+        // Self-host/CLI never spends on a metered backend tier.
+        paid_rescue: false,
     };
 
     let response = match client.fetch(&params).await {
