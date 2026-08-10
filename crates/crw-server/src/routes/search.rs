@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::State;
 use axum::extract::rejection::JsonRejection;
+use axum::http::HeaderMap;
 use crw_core::Deadline;
 use crw_core::config::LlmConfig;
 use crw_core::error::CrwError;
@@ -257,9 +258,23 @@ fn is_valid_lang(lang: &str) -> bool {
 /// (minus the credit / quota wrapper, which lives in the SaaS layer).
 pub async fn search(
     State(state): State<AppState>,
+    headers: HeaderMap,
     body: Result<Json<SearchRequest>, JsonRejection>,
 ) -> Result<Json<SearchResponse>, AppError> {
-    let Json(req) = body.map_err(AppError::from)?;
+    let Json(mut req) = body.map_err(AppError::from)?;
+    // Read the entitlement from the header, never from the body: `paid_rescue`
+    // is `serde(skip)`, so a caller cannot grant it to itself by sending the
+    // field. Only crw-saas sets this header, and only after checking the plan
+    // and role it alone can see.
+    //
+    // Deliberately NOT wired into `/v2/search` (routes/v2), which is an
+    // unconditional proxy open to every plan including FREE, nor into the MCP
+    // dispatcher or the research legs — all of those reach `search_inner`
+    // directly and so keep `paid_rescue: false`.
+    req.paid_rescue = headers
+        .get(crw_search::PAID_RESCUE_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.trim() == "1");
     let resp = search_inner(&state, req).await?;
     Ok(Json(resp))
 }
@@ -1672,6 +1687,7 @@ mod tests {
             query_expand: None,
             answer_list_format: None,
             max_content_chars: None,
+            paid_rescue: false,
         }
     }
 

@@ -21,6 +21,16 @@ pub struct SearxngParams {
     pub engines: Option<String>,
     pub pageno: Option<u32>,
     pub safesearch: Option<u8>,
+    /// Does this request carry an entitlement to a PAID rescue tier in the
+    /// backend, if the free tiers come back empty?
+    ///
+    /// Deliberately not a query parameter: it is a property of the caller's
+    /// account, not of the query, so it travels as a header
+    /// (`X-Crw-Paid-Rescue`) and never widens the search surface or the
+    /// backend's cache key. Only crw-saas can set it — it decides from the
+    /// plan/role it alone can see — and it defaults to false everywhere else,
+    /// so self-hosters, the CLI, MCP and the research legs never spend.
+    pub paid_rescue: bool,
 }
 
 /// Map the public [`SearchRequest`] to SearXNG query parameters.
@@ -138,6 +148,7 @@ pub fn map_to_searxng_params(req: &SearchRequest, config: &SearchConfig) -> Sear
         engines,
         pageno: None,
         safesearch: None,
+        paid_rescue: req.paid_rescue,
     }
 }
 
@@ -175,7 +186,28 @@ mod tests {
             query_expand: None,
             answer_list_format: None,
             max_content_chars: None,
+            paid_rescue: false,
         }
+    }
+
+    #[test]
+    fn paid_rescue_travels_from_request_to_params() {
+        // The entitlement has to survive the mapper, or the header never gets
+        // sent and the backend silently keeps returning nothing.
+        let mut r = req("rust async");
+        assert!(!map_to_searxng_params(&r, &cfg()).paid_rescue);
+        r.paid_rescue = true;
+        assert!(map_to_searxng_params(&r, &cfg()).paid_rescue);
+    }
+
+    #[test]
+    fn paid_rescue_cannot_be_set_from_the_request_body() {
+        // `serde(skip)`: a caller sending the field must NOT be able to grant
+        // itself a metered tier. This is the whole reason the flag is not a
+        // normal request field.
+        let r: SearchRequest =
+            serde_json::from_str(r#"{"query":"x","paidRescue":true,"paid_rescue":true}"#).unwrap();
+        assert!(!r.paid_rescue);
     }
 
     #[test]
