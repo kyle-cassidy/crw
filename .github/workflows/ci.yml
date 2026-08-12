@@ -59,7 +59,7 @@ jobs:
       # rust-cache's job-id default would have shared it by accident; naming it
       # makes that a decision, and one that survives renaming either job.
       - name: Cache cargo registry & build
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           shared-key: dev-check
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -169,7 +169,7 @@ jobs:
       # different profiles. rust-cache keys on the job id, so they no longer
       # collide, and this job stops handing `check` a release target it can't use.
       - name: Cache cargo registry & build
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
