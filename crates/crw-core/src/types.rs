@@ -1855,6 +1855,11 @@ pub struct SearchRequest {
     /// uses the server config. The eval harness sets this to A/B the lever.
     #[serde(default, alias = "multi_round")]
     pub multi_round: Option<bool>,
+    /// Per-request override for `[search].snippet_first` — answer from free SERP
+    /// snippets first and scrape only if that abstains. None uses server config.
+    /// Used by the eval harness to A/B the lazy-scrape path against prod.
+    #[serde(default, alias = "snippet_first")]
+    pub snippet_first: Option<bool>,
     /// Per-request override for `[search].answer_list_format` — when the query
     /// has list intent ("best/top X in Y", "recommend …"), render the answer as
     /// a ranked list of named options instead of prose. None uses the server

@@ -524,9 +524,26 @@ pub async fn search_inner(
     if response.is_degraded() && !structured_rescue {
         warnings.push(DEGRADED_MESSAGE.into());
     }
-    if let Some(opts) = req.scrape_options.as_ref() {
+    // Snippet-first (lazy scrape): on the answer path, defer the scrape and try to
+    // answer from the free SERP snippets + structured sources first; only scrape
+    // if that answer abstains (below, after synthesis). Most factoid queries answer
+    // from the snippet, so this skips the expensive scrape on the majority.
+    // snippet_first REQUIRES snippet_fallback: the round-1 lazy synth builds its
+    // sources from snippets, and with scrape skipped a non-fallback synth would
+    // return Err (empty markdown pool) and never reach the escalation, silently
+    // yielding no answer. Gate on it so enabling snippet_first alone is a safe
+    // no-op (normal eager scrape) rather than a recall regression.
+    let want_snippet_first = req.answer.unwrap_or(false)
+        && req
+            .snippet_first
+            .unwrap_or(state.config.search.snippet_first)
+        && state.config.search.snippet_fallback;
+    let mut scraped = false;
+    if let Some(opts) = req.scrape_options.as_ref()
+        && !want_snippet_first
+    {
         match enrich_with_scrape(&mut data, opts, state).await {
-            Ok(()) => {}
+            Ok(()) => scraped = true,
             Err(msg) => {
                 tracing::warn!(error = %msg, "scrape enrichment failed");
                 warning = Some(msg);
@@ -667,6 +684,55 @@ pub async fn search_inner(
                                     &mut agg_truncated,
                                     u,
                                 );
+                            }
+                            // Snippet-first escalation: the snippet-only answer
+                            // abstained, so NOW scrape the original results and
+                            // re-synthesize once. Monotone: a still-abstaining
+                            // re-synth keeps the snippet answer. Bounded by the
+                            // request deadline like the scout's scrape.
+                            if want_snippet_first
+                                && !scraped
+                                && is_abstention(&ans)
+                                && let Some(opts) = req.scrape_options.as_ref()
+                            {
+                                let _ = tokio::time::timeout(
+                                    req_deadline.remaining(),
+                                    enrich_with_scrape(&mut data, opts, state),
+                                )
+                                .await;
+                                if let Ok((ans2, cites2, usage2, mut warns2)) = synthesize_answer(
+                                    &req,
+                                    &data,
+                                    &leg_cfg,
+                                    state.config.search.passage_select,
+                                    state.config.search.answer_bm25_select,
+                                    state.config.search.answer_calibrated,
+                                    state.config.search.snippet_fallback,
+                                    state.config.search.answer_guarded,
+                                    &structured_sources,
+                                    list_format,
+                                )
+                                .await
+                                {
+                                    if let Some(ref u) = usage2 {
+                                        merge_usage(
+                                            &mut agg_input_tokens,
+                                            &mut agg_output_tokens,
+                                            &mut agg_cache_hit,
+                                            &mut agg_cache_miss,
+                                            &mut agg_calls,
+                                            &mut agg_provider,
+                                            &mut agg_model,
+                                            &mut agg_truncated,
+                                            u,
+                                        );
+                                    }
+                                    if !is_abstention(&ans2) {
+                                        ans = ans2;
+                                        cites = cites2;
+                                        warnings.append(&mut warns2);
+                                    }
+                                }
                             }
                             // Adaptive multi-round (gated): if round-1 ABSTAINED,
                             // the evidence-scout issues targeted follow-ups; we
@@ -1685,6 +1751,7 @@ mod tests {
             query_expand_variants: None,
             multi_round: None,
             query_expand: None,
+            snippet_first: None,
             answer_list_format: None,
             max_content_chars: None,
             paid_rescue: false,

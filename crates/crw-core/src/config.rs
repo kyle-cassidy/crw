@@ -361,6 +361,17 @@ pub struct SearchConfig {
     /// first pool" — the dominant remaining miss. Defaults to `false` (gated).
     #[serde(default)]
     pub multi_round: bool,
+    /// Snippet-first answer path (lazy scrape). When on, the answer is first
+    /// synthesized from the FREE SearXNG snippets (title/description) + any
+    /// structured sources, WITHOUT scraping. Only if that answer abstains does
+    /// the original result set get scraped and the answer re-synthesized once.
+    /// Most factoid queries answer from the snippet, so this skips the expensive
+    /// scrape (chrome RAM + the p90 latency tail) on the majority of traffic.
+    /// Recall-safe + monotone: a still-abstaining post-scrape answer keeps the
+    /// snippet answer; abstention always escalates to the full scrape. Defaults
+    /// to `false` (gated).
+    #[serde(default)]
+    pub snippet_first: bool,
     /// Passage-level relevance gate for the LLM answer path: split each scraped
     /// source into passages and feed the answer LLM only the query-relevant
     /// ones (DeepSeek-scored, no new ML deps). Subtractive — removes noise, never
@@ -500,6 +511,7 @@ impl Default for SearchConfig {
             query_expand_variants: default_query_expand_variants(),
             pipeline_overlap: false,
             multi_round: false,
+            snippet_first: false,
             passage_select: false,
             answer_bm25_select: false,
             page2_fallback: false,

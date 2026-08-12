@@ -184,6 +184,7 @@ mod tests {
             query_expand_variants: None,
             multi_round: None,
             query_expand: None,
+            snippet_first: None,
             answer_list_format: None,
             max_content_chars: None,
             paid_rescue: false,
