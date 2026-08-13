@@ -876,6 +876,7 @@ dependencies = [
  "proptest",
  "publicsuffix",
  "rand 0.10.2",
+ "regex",
  "reqwest",
  "scraper",
  "serde_json",

@@ -421,6 +421,8 @@ async fn run_crawl_inner(opts: CrawlOptions<'_>) {
             data.markdown.as_deref(),
             fetch_result.screenshot.is_some(),
             http_retry_threshold_bytes,
+            &fetch_result.url,
+            fetch_result.final_url.as_deref(),
         )
         .filter(|b| b.vendor != crw_core::types::STRUCTURAL_FAILURE_VENDOR);
         // An origin error page is not the page that was asked for either. One
