@@ -1,0 +1,84 @@
+# Fork CI/CD: test -> build -> publish to ghcr.io/kyle-cassidy/crw
+#
+# The loop this closes: patch code -> push -> this workflow tests and
+# publishes an image -> the Mac Studio's weekly deploy/update.sh (launchd)
+# pulls it, recreates both stacks, verifies health, rolls back on failure.
+#
+# Concepts, since this doubles as a CI primer:
+# - `on:` decides WHEN the robot wakes up (pushes to main, or the Run button
+#   via workflow_dispatch).
+# - Each job runs on a THROWAWAY VM (runs-on). Nothing survives between runs
+#   except explicit caches — that disposability is why CI results are
+#   reproducible and why caching is its own discipline.
+# - `needs:` chains jobs: publish only starts if test succeeded. That's the
+#   quality gate — an image that reaches the registry has passed the tests.
+# - GITHUB_TOKEN is minted fresh per run with exactly the `permissions:`
+#   below; no long-lived secret to leak.
+# - Note: serious projects pin actions to commit SHAs (see upstream's
+#   workflows) instead of tags like @v4 — tags can be re-pointed by an
+#   attacker, SHAs can't. Kept readable here; tighten if this ships anything
+#   beyond the homelab.
+name: Fork Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/kyle-cassidy/crw
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Caches ~/.cargo and target/ keyed on Cargo.lock — the difference
+      # between a cold ~30 min dependency compile and a warm few-minute run.
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test (workspace)
+        run: cargo test --workspace
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # QEMU registers arm64 emulation; buildx orchestrates the multi-arch
+      # build. The Dockerfile cross-compiles Rust on the native amd64 runner
+      # (only the tiny runtime layer runs under emulation), so arm64 stays
+      # fast — this mirrors upstream's docker-build.yml setup.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (amd64 + arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          # :latest tracks main; :sha-<commit> pins every build so a bad
+          # :latest can always be rolled back to a known-good digest.
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          # gha cache keeps cargo-chef's cooked-dependencies layer between
+          # runs — same idea as rust-cache above, but for Docker layers.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

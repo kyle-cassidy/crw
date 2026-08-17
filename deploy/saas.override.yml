@@ -1,0 +1,21 @@
+# Shape B — "SaaS / multi-tenant": opencore holds NO LLM key.
+# CRW_DISABLE_SERVER_LLM_KEY=1 makes the server refuse to boot if a server
+# key sneaks into config; require_byok_header rejects LLM-touching requests
+# that lack the trusted-proxy header AND a per-request llmApiKey.
+#
+# Run:
+#   docker compose -p crw-saas \
+#     -f docker-compose.yml -f deploy/saas.override.yml \
+#     --env-file deploy/.env.saas up -d
+services:
+  crw:
+    image: ${CRW_IMAGE:-ghcr.io/us/crw:latest}
+    build: !reset null
+    restart: unless-stopped
+    environment:
+      - CRW_DISABLE_SERVER_LLM_KEY=1
+      # Section must deserialize, so api_key is set to explicit-empty.
+      # Empty = "not configured" to the boot guard; the byok header guard
+      # is what enforces the tenant boundary.
+      - CRW_EXTRACTION__LLM__API_KEY=
+      - CRW_EXTRACTION__LLM__REQUIRE_BYOK_HEADER=X-CRW-Tenant

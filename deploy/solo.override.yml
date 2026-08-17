@@ -1,0 +1,25 @@
+# Shape A — "solo / self-hosted": LLM key lives in the server's own config.
+# Anyone who can reach this instance can spend the key, so it binds to
+# 127.0.0.1 only; expose it via the Cloudflare/Pangolin tunnel with auth.
+#
+# Run:
+#   docker compose -p crw-solo \
+#     -f docker-compose.yml -f deploy/solo.override.yml \
+#     --env-file deploy/.env.solo up -d
+services:
+  crw:
+    # Image source is CRW_IMAGE from deploy/.env.solo — the single knob that
+    # switches between upstream and the fork's CI-built image.
+    image: ${CRW_IMAGE:-ghcr.io/us/crw:latest}
+    build: !reset null
+    # Survive reboots without re-auth: policy lives on the container, so once
+    # created with the resolved key in its env, Docker restarts it on boot —
+    # no 1Password round-trip needed until the next recreate.
+    restart: unless-stopped
+    environment:
+      # [extraction.llm] via figment env layering (CRW_SECTION__SUBSECTION__KEY).
+      # api_key must be present for the section to deserialize; empty string
+      # means "no server key yet" and the server still boots.
+      - CRW_EXTRACTION__LLM__PROVIDER=anthropic
+      - CRW_EXTRACTION__LLM__MODEL=claude-haiku-4-5-20251001
+      - CRW_EXTRACTION__LLM__API_KEY=${CRW_SOLO_LLM_KEY:-}
